@@ -20,10 +20,9 @@ module.exports ={
         color: 'white',
       },
       hr80:{
-        width:'80%',
+        width:width * 0.8,
         borderBottomColor: 'black',
         borderBottomWidth:1,
         marginVertical:20, 
       },
-
 }
