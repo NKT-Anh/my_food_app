@@ -1,14 +1,11 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
-import SplashScreen from './src/screen/splashScreen';
-import WelcomeScreen from './src/screen/welcomeScreen';
-import LoginScreen from './src/screen/logIn';
-
+import RootNavigation from './src/navigator/RootNavigation';
 const Stack = createStackNavigator();
 
 const App = () => {
   return (
-<LoginScreen></LoginScreen>
+    <RootNavigation/>
   );
 };
 

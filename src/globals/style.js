@@ -4,6 +4,14 @@ module.exports ={
         col1:'white',
         col2:'red',
         text2:'gray',
+        title:'#FFA500',
+        textInputColor:'#FFCC99',
+        text3:'#FFA726',
+        safeColor:"#FFC107",
+        backgroundColor:'#F0F8FF',
+        
+
+
     },
     titles:{
         title1: 30,
@@ -20,9 +28,10 @@ module.exports ={
         color: 'white',
       },
       hr80:{
-        width:width * 0.8,
-        borderBottomColor: 'black',
+        width:'80%',
+        borderBottomColor: '#FFCBA4',
         borderBottomWidth:1,
         marginVertical:20, 
       },
+      
 }

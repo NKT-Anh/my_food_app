@@ -7,18 +7,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import Feather from '@expo/vector-icons/Feather';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
+import style from '../globals/style';
+import { useNavigation } from '@react-navigation/native';
+import globalStyles from '../globals/globalStyles';
 
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword , setShowPassword] = useState(false);
-
+  const navigation = useNavigation();
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.topNav}>
-        <Text style={styles.navTitle}>My food app</Text>
+    <SafeAreaView style={globalStyles.safeArea}>
+      <View style={globalStyles.topNav}>
+        <Text style={globalStyles.navTitle}>My food app</Text>
       </View>
       <KeyboardAvoidingView 
         behavior={Platform.OS === "android" ? "padding" : "height"} 
@@ -53,6 +55,7 @@ const LoginScreen = () => {
               secureTextEntry={!showPassword}
               value={password}
               onChangeText={setPassword}
+              autoCapitalize="none"
             />
             <Feather
             style={[styles.icon, {marginLeft:-10} ]}
@@ -67,7 +70,9 @@ const LoginScreen = () => {
             </View>
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.loginButton}>
+            <TouchableOpacity
+            onPress={()=> navigation.navigate('Home')}
+            style={styles.loginButton}>
               <Text style={styles.loginText}>Đăng nhập</Text>
             </TouchableOpacity>
             <Text style={{ color: '#FFA726' }}>Khác</Text>
@@ -84,8 +89,8 @@ const LoginScreen = () => {
             <AntDesign name="facebook-square" size={24} color="blue" />
             </TouchableOpacity>
             </View>
-            <View style={styles.hr80}></View>
-            <TouchableOpacity>
+            <View style={globalStyles.hr80}></View>
+            <TouchableOpacity onPress={()=> navigation.navigate('SignIn')}>
               <Text style={styles.registerText}>
                 Chưa có tài khoản? <Text style={styles.boldText}>Đăng ký ngay</Text>
               </Text>
@@ -111,6 +116,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#ccc',
   },
+  
   navTitle: {
     color: '#fff',
     fontSize: 18,
@@ -139,7 +145,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: 'bold',
-    color: '#FFA500',
+    color:style.colors.title ,
     marginBottom: 20,
     textShadowColor: 'black',
     textShadowOffset: { width: 1, height: 1 },
@@ -174,13 +180,6 @@ const styles = StyleSheet.create({
     color: '#FF6F61',
     fontSize: 14,
     marginBottom: 20,
-    
-  },
-  hr80:{
-    width:'80%',
-    borderBottomColor: '#FFCBA4',
-    borderBottomWidth:1,
-    marginVertical:10, 
     
   },
   loginButton: {
