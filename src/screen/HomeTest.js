@@ -16,9 +16,9 @@ import style from '../globals/style';
 import globalStyles from '../globals/globalStyles';
 
 const categories = [
-  { id: 1, name: 'Pizza', image: require('../../assets/logoC.png') },
-  { id: 2, name: 'Burgers', image: require('../../assets/logoC.png') },
-  { id: 3, name: 'Drinks', image: require('../../assets/logoC.png') },
+  { id: 1, name: 'Pizza', image: require('../../assets/images/logoC.png') },
+  { id: 2, name: 'Burgers', image: require('../../assets/images/logoC.png') },
+  { id: 3, name: 'Drinks', image: require('../../assets/images/logoC.png') },
   // Add more...
 ];
 
@@ -26,13 +26,13 @@ const featuredFoods = [
   {
     id: 1,
     name: 'Pizza Pepperoni',
-    image: require('../../assets/logoC.png'),
+    image: require('../../assets/images/logoC.png'),
     price: '120.000đ',
   },
   {
     id: 2,
     name: 'Cheeseburger',
-    image: require('../../assets/logoC.png'),
+    image: require('../../assets/images/logoC.png'),
     price: '90.000đ',
   },
 ];

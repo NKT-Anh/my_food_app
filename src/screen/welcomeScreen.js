@@ -21,7 +21,7 @@ const WelcomeScreen = () => {
     <View style={styles.container}>
       <Text style={styles.title}>Hello</Text>
       <View style={styles.background}>
-        <Image style={styles.logo} source={require('../../assets/backGround.jpg')} />
+        <Image style={styles.logo} source={require('../../assets/images/backGround.jpg')} />
       </View>
       <View style={styles.hr80} />
       <Text style={styles.text}>Chào mừng bạn đến với food app</Text>

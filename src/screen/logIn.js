@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   View, Text, TextInput, StyleSheet, Image, TouchableOpacity, 
-  KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard 
+  KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard,Alert 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AntDesign from '@expo/vector-icons/AntDesign';
@@ -10,14 +10,18 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import style from '../globals/style';
 import { useNavigation } from '@react-navigation/native';
 import globalStyles from '../globals/globalStyles';
+import BottomNavigation from '../navigator/BottomNavigation';
 
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword , setShowPassword] = useState(false);
   const navigation = useNavigation();
+  const [selectedIndex, setSelectedIndex] = useState(1);
 
   return (
+    <View style={{ flex: 1 }}>
+
     <SafeAreaView style={globalStyles.safeArea}>
       <View style={globalStyles.topNav}>
         <Text style={globalStyles.navTitle}>My food app</Text>
@@ -30,7 +34,7 @@ const LoginScreen = () => {
         <View style={{ flex: 1 }}>
           <View style={styles.innerContainer}>
 
-            <Image source={require('../../assets/logoC.png')} style={styles.logo} />
+            <Image source={require('../../assets/images/logoC.png')} style={styles.logo} />
 
             <Text style={styles.title}>Đăng Nhập</Text>
             <View style={styles.inputContainer}>
@@ -71,7 +75,12 @@ const LoginScreen = () => {
             </TouchableOpacity>
             
             <TouchableOpacity
-            onPress={()=> navigation.navigate('Home')}
+            onPress={()=> 
+              {Alert.alert(
+                "Thông tin đăng nhập",
+                `Email: ${email}\nMật khẩu: ${password}`,
+                [{ text: "OK" }]
+              );}}
             style={styles.loginButton}>
               <Text style={styles.loginText}>Đăng nhập</Text>
             </TouchableOpacity>
@@ -100,6 +109,8 @@ const LoginScreen = () => {
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
     </SafeAreaView>
+    <BottomNavigation/>
+    </View>
   );
 };
 

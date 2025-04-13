@@ -9,6 +9,8 @@ module.exports ={
         text3:'#FFA726',
         safeColor:"#FFC107",
         backgroundColor:'#F0F8FF',
+        cam:'#ff5722',
+        colAdmin:'#0e90ad',
         
 
 

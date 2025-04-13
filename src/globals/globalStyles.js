@@ -39,12 +39,21 @@ const globalStyles = StyleSheet.create({
           textShadowRadius: 2,
           alignContent:'center',
           justifyContent:'center',
+          marginTop:20,
         },
         container: {
             flex: 1,
             backgroundColor:style.colors.backgroundColor,
             paddingHorizontal: 20,
             justifyContent: 'center',
+            
+          },
+          hr100:{
+            marginTop:5,
+            borderBottomColor: '#fff',
+            borderBottomWidth:10,
+            
+            
           },
 
 });

@@ -20,6 +20,8 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useNavigation } from '@react-navigation/native';
 import Fontisto from '@expo/vector-icons/Fontisto';
 import globalStyles from '../globals/globalStyles';
+import BottomNavigation from '../navigator/BottomNavigation';
+
 const SignInScreen = () => {
   const [fullName,setFullName] = useState('')
   const [phone , setPhone] =useState('');
@@ -31,6 +33,7 @@ const SignInScreen = () => {
   const navigation = useNavigation();
 
   return (
+    
     <SafeAreaView style={globalStyles.safeArea}>
       <View style={globalStyles.topNav}>
         <Text style={globalStyles.navTitle}>My food app</Text>
@@ -144,6 +147,7 @@ const SignInScreen = () => {
 
     </TouchableWithoutFeedback>
     </SafeAreaView>
+
   )
 }
 
