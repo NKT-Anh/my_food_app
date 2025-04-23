@@ -12,6 +12,9 @@ import OrderScreen from '../admin_app/OrderScreen';
 import StatisticalScreen from '../admin_app/StatisticalScreen';
 import UserScreen from '../admin_app/UserScreen';
 import AddFood from '../admin_app/Food/AddFood';
+import CartScreen from '../screen/CartScreen';
+import Profile from '../screen/profile/Profile';
+import SearchScreen from '../screen/SearchScreen';
 const Stack = createNativeStackNavigator();
 
 
@@ -35,6 +38,10 @@ const ScreensNavigation = () => {
         <Stack.Screen name="StatisticalScreen" component={StatisticalScreen}/>
         <Stack.Screen name="UserScreen" component={UserScreen}/>
         <Stack.Screen name="AddFood" component={AddFood}/>
+        <Stack.Screen name="Profile" component={Profile}/>
+        <Stack.Screen name="SearchScreen" component={SearchScreen}/>
+        <Stack.Screen name="Cart" component={CartScreen} options={{ title: 'Giỏ Hàng' }} />
+        
 
       </Stack.Navigator>
   )

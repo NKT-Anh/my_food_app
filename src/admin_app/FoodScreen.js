@@ -1,16 +1,37 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { titles } from '../globals/style';
+import { db } from '../Firebase/FirebaseConfig';
+import{collection,onSnapshot } from 'firebase/firestore'
 
 const FoodScreen = () => {
   const navigation  = useNavigation();
   const [foodData, setFoodData] = useState([
-    { id: '1', name: 'Bún bò Huế', price: '35000', description: 'Món ăn đặc sản miền Trung', image: require('../../assets/images/logoC.png'), },
-    { id: '2', name: 'Phở bò', price: '40000', description: 'Phở truyền thống Hà Nội', image: require('../../assets/images/logoC.png'), },
-    { id: '3', name: 'Cơm gà', price: '30000', description: 'Cơm gà chiên giòn', image: require('../../assets/images/logoC.png'), },
+    // { id: '1', name: 'Bún bò Huế', price: '35000', description: 'Món ăn đặc sản miền Trung', image: require('../../assets/images/logoC.png'), },
+    // { id: '2', name: 'Phở bò', price: '40000', description: 'Phở truyền thống Hà Nội', image: require('../../assets/images/logoC.png'), },
+    // { id: '3', name: 'Cơm gà', price: '30000', description: 'Cơm gà chiên giòn', image: require('../../assets/images/logoC.png'), },
   ]);
+
+  useEffect (()=> {
+    const  foodCollection = collection(db,'foods');
+    const loadFood = onSnapshot(foodCollection,(snapshot)=>{
+
+      const foodList = snapshot.docs.map(doc =>({
+        id: doc.id,
+        ...doc.data()
+      }))
+      setFoodData(foodList);
+    },(error) =>{
+      console.error("load food error", error);
+    }
+  )
+    return ()=> loadFood();
+
+  },[])
+
+
   const deleteFood  = (id)=>{
     Alert.alert(
       'Xác nhận xóa',
@@ -31,8 +52,8 @@ const FoodScreen = () => {
   const renderItem = ({ item }) => (
     <View style={styles.itemContainer}>
       <View style={{ flex: 1 }}>
-        <Text style={styles.itemName}>{item.name}</Text>
-        <Text style={styles.itemPrice}>{item.price} đ</Text>
+        <Text style={styles.itemName}>{item.foodName}</Text>
+        <Text style={styles.itemPrice}>{Number(item.foodPrice).toLocaleString('vi-VN')} đ</Text>
         <Text style={styles.itemDesc}>{item.description}</Text>
       </View>
       <View style={styles.actionIcons}>
@@ -49,6 +70,7 @@ const FoodScreen = () => {
         keyExtractor={(item)=> item.id}
         renderItem={renderItem}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+        ListEmptyComponent={<Text>Chưa có món ăn nào đc thêm vào.</Text>}
       />
       <TouchableOpacity
         style={styles.addButton}

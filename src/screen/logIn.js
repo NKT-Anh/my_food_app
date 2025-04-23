@@ -11,6 +11,7 @@ import style from '../globals/style';
 import { useNavigation } from '@react-navigation/native';
 import globalStyles from '../globals/globalStyles';
 import BottomNavigation from '../navigator/BottomNavigation';
+import { LogIn } from '../Firebase/FirebaseAPI';
 
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
@@ -18,6 +19,21 @@ const LoginScreen = () => {
   const [showPassword , setShowPassword] = useState(false);
   const navigation = useNavigation();
   const [selectedIndex, setSelectedIndex] = useState(1);
+
+  const handleLogIn = async () => {
+    if (!email || !password) {
+      Alert.alert("Thông báo", "Vui lòng nhập tài khoản và mật khẩu");
+      return;
+    }
+
+    const result = await LogIn({ email, password });
+  
+    if (result.success) {
+      navigation.navigate("Home");
+    } else {
+      Alert.alert("Đăng nhập thất bại", result.error);
+    }
+  }
 
   return (
     <View style={{ flex: 1 }}>
@@ -75,12 +91,7 @@ const LoginScreen = () => {
             </TouchableOpacity>
             
             <TouchableOpacity
-            onPress={()=> 
-              {Alert.alert(
-                "Thông tin đăng nhập",
-                `Email: ${email}\nMật khẩu: ${password}`,
-                [{ text: "OK" }]
-              );}}
+            onPress={()=> handleLogIn()}
             style={styles.loginButton}>
               <Text style={styles.loginText}>Đăng nhập</Text>
             </TouchableOpacity>
@@ -89,7 +100,9 @@ const LoginScreen = () => {
 
             <View style={styles.iconLoginLayout}>
 
-            <TouchableOpacity style ={styles.iconLogin}>
+            <TouchableOpacity
+            onPress={()=> handleLogIn()}
+            style ={styles.iconLogin}>
             <AntDesign name="google" size={24} color="red" />
             </TouchableOpacity>
             

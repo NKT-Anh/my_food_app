@@ -1,14 +1,12 @@
 export const defaultTags = [
-    'Đồ ăn',
-    'Thức uống',
-    'Bữa sáng',
-    'Cơm',
-    'Lẩu',
-    'Mì',
+    'Đồ chay',
+    'Đồ uống',
+    'Rau củ',
+    'Đồ hộp',
+    'Trái cây',
+    'Gia vị',
     'Fast food',
     'Đồ tráng miệng',
-    'Salad',
-    'Súp',
   ];
 
   export const addTag = (tags, newTag) =>{

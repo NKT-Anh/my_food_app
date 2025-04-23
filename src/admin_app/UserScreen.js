@@ -5,48 +5,48 @@ import {Ionicons,Feather} from '@expo/vector-icons';
 const DATA = [
   {
     id: '1',
-    name: 'First Item',
-    email: 'Exam@gamil.com',
+    name: 'Anh',
+    email: 'anh@gamil.com',
   },
   {
     id: '3',
-    name: 'Second Item',
-    email: 'Exam@gamil.com',
+    name: 'Anh',
+    email: 'Anh2@gamil.com',
   },
   {
     id: '22',
-    name: 'Third Item',
-    email: 'Exam@gamil.com',
+    name: 'Anh',
+    email: 'Anh3@gamil.com',
   },
   {
     id: '2q',
-    name: 'Third Item',
-    email: 'Exam@gamil.com',
+    name: 'Anh',
+    email: 'Anh4@gamil.com',
   },
   {
     id: '2e',
-    name: 'Third Item',
-    email: 'Exam@gamil.com',
+    name: 'Anh',
+    email: 'Anh5@gamil.com',
   },
   {
     id: '2f',
-    name: 'Third Item',
-    email: 'Exam@gamil.com',
+    name: 'Anh',
+    email: 'Anh6@gamil.com',
   },
   {
     id: '2d',
     name: 'Third Item',
-    email: 'Exam@gamil.com',
+    email: 'Anh7@gamil.com',
   },
   {
     id: '2a',
     name: 'Third Item',
-    email: 'Exam@gamil.com',
+    email: 'Anh8@gamil.com',
   },
   {
     id: 'a',
     name: 'Third Item',
-    email: 'Exam@gamil.com',
+    email: 'Anh9@gamil.com',
   },
 ];
 

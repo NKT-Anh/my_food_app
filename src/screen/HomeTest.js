@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -10,39 +10,62 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Feather from '@expo/vector-icons/Feather';
-import AntDesign from '@expo/vector-icons/AntDesign';
 import style from '../globals/style';
 import globalStyles from '../globals/globalStyles';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 
 const categories = [
-  { id: 1, name: 'Pizza', image: require('../../assets/images/logoC.png') },
-  { id: 2, name: 'Burgers', image: require('../../assets/images/logoC.png') },
-  { id: 3, name: 'Drinks', image: require('../../assets/images/logoC.png') },
-  // Add more...
+  { id: 1, name: 'Tất cả', icon: 'food-croissant', tag: 'Tất cả' },
+  { id: 2, name: 'Đồ chay', icon: 'hamburger', tag: 'Đồ chay' },
+  { id: 3, name: 'Rau củ', icon: 'pizza', tag: 'Rau củ' },
+  { id: 4, name: 'Đồ hộp', icon: 'coffee', tag: 'Đồ hộp' },
+  { id: 5, name: 'Đồ uống', icon: 'cup-water', tag: 'Đồ uống' },
+  { id: 6, name: 'Gia vị', icon: 'noodles', tag: 'Gia vị' },
+  { id: 7, name: 'Đồ tráng miệng', icon: 'ice-cream', tag: 'Đồ tráng miệng' },
+  { id: 8, name: 'Fast food', icon: 'food-drumstick', tag: 'Fast food' },
+  { id: 9, name: 'Đồ ăn', icon: 'food-croissant', tag: 'Đồ ăn' },
 ];
 
 const featuredFoods = [
   {
     id: 1,
-    name: 'Pizza Pepperoni',
+    name: 'Cam',
     image: require('../../assets/images/logoC.png'),
     price: '120.000đ',
+    tags: ['Đồ ăn', 'Đồ uống'],
   },
   {
     id: 2,
     name: 'Cheeseburger',
     image: require('../../assets/images/logoC.png'),
     price: '90.000đ',
+    tags: ['Fast food'],
   },
 ];
 
 const HomeScreen = () => {
+  const [selectedTag, setSelectedTag] = useState('Tất cả');
+  const [likedFoods, setLikedFoods] = useState([]);
+
+  const handleTag = (tag) => {
+    setSelectedTag(tag === selectedTag ? 'Tất cả' : tag);
+  };
+
+  const toggleLike = (id) => {
+    setLikedFoods((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const filteredFoods =
+    selectedTag === 'Tất cả'
+      ? featuredFoods
+      : featuredFoods.filter((food) => food.tags?.includes(selectedTag));
+
   return (
     <SafeAreaView style={globalStyles.safeArea}>
       <ScrollView style={styles.container}>
-        <Text style={styles.greetingText}>Xin chào 👋</Text>
-        <Text style={styles.title}>Bạn muốn ăn gì hôm nay?</Text>
+        <Text style={styles.title}>Danh mục yêu thích</Text>
 
         {/* Search Bar */}
         <View style={styles.searchContainer}>
@@ -61,26 +84,53 @@ const HomeScreen = () => {
           showsHorizontalScrollIndicator={false}
           data={categories}
           keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={{ paddingLeft: 10 }}
           renderItem={({ item }) => (
-            <TouchableOpacity style={styles.categoryItem}>
-              <Image source={item.image} style={styles.categoryImage} />
-              <Text style={styles.categoryText}>{item.name}</Text>
+            <TouchableOpacity
+              style={styles.categoryItem}
+              onPress={() => handleTag(item.tag)}
+            >
+              <MaterialCommunityIcons
+                name={item.icon}
+                size={40}
+                color={item.tag === selectedTag ? '#ff5a00' : '#333'}
+              />
+              <Text
+                style={[
+                  styles.categoryText,
+                  item.tag === selectedTag && { color: '#ff5a00', fontWeight: 'bold' },
+                ]}
+              >
+                {item.name}
+              </Text>
             </TouchableOpacity>
           )}
         />
 
-        {/* Featured */}
-        <Text style={styles.sectionTitle}>Món nổi bật</Text>
-        {featuredFoods.map((item) => (
-          <View key={item.id} style={styles.foodCard}>
-            <Image source={item.image} style={styles.foodImage} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.foodName}>{item.name}</Text>
-              <Text style={styles.foodPrice}>{item.price}</Text>
+        {/* Food List */}
+        <Text style={styles.sectionTitle}>Món ăn yêu thích</Text>
+        {filteredFoods.length > 0 ? (
+          filteredFoods.map((food) => (
+            <View key={food.id} style={styles.foodCard}>
+              <Image source={food.image} style={styles.foodImage} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.foodName}>{food.name}</Text>
+                <Text style={styles.foodPrice}>{food.price}</Text>
+              </View>
+              <TouchableOpacity onPress={() => toggleLike(food.id)}>
+                <MaterialCommunityIcons
+                  name={likedFoods.includes(food.id) ? 'heart-outline' : 'heart'}
+                  size={24}
+                  color={likedFoods.includes(food.id) ? 'gray' : 'red'}
+                />
+              </TouchableOpacity>
             </View>
-            <AntDesign name="hearto" size={20} color="red" />
-          </View>
-        ))}
+          ))
+        ) : (
+          <Text style={{ color: 'gray', textAlign: 'center', marginTop: 20 }}>
+            Không có món nào phù hợp.
+          </Text>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -90,11 +140,6 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 20,
     backgroundColor: style.colors.backgroundColor,
-  },
-  greetingText: {
-    fontSize: 18,
-    color: style.colors.text1,
-    marginTop: 10,
   },
   title: {
     fontSize: 24,
@@ -125,12 +170,6 @@ const styles = StyleSheet.create({
   categoryItem: {
     alignItems: 'center',
     marginRight: 15,
-  },
-  categoryImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginBottom: 5,
   },
   categoryText: {
     fontSize: 14,

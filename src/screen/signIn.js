@@ -10,6 +10,7 @@ import{
   TouchableWithoutFeedback,
   Keyboard,
   TouchableOpacity,
+  Alert,
 
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -21,6 +22,7 @@ import { useNavigation } from '@react-navigation/native';
 import Fontisto from '@expo/vector-icons/Fontisto';
 import globalStyles from '../globals/globalStyles';
 import BottomNavigation from '../navigator/BottomNavigation';
+import { signInUser } from '../Firebase/FirebaseAPI';
 
 const SignInScreen = () => {
   const [fullName,setFullName] = useState('')
@@ -32,6 +34,26 @@ const SignInScreen = () => {
   const [showConfirmPassword,setShowConfirmPassword] = useState(false);
   const navigation = useNavigation();
 
+  const handleSignUp = async () =>{
+    if(password !== confirmPassword){
+      Alert.alert("Mật khẩu không khớp", "Vui lòng kiểm tra lại mật khẩu và xác nhận mật khẩu");
+      return;
+    }
+    try{
+      const result = await signInUser({email,password,fullName,address:''})
+      if(result.success)
+      {
+        Alert.alert("Đăng ký thành công", "Chúc mừng bạn đã đăng ký thành công!");
+        navigation.navigate('LogIn');
+      }
+      else {
+        Alert.alert("Lỗi", result.error);
+      }
+    }
+    catch(error){
+      Alert.alert("Đăng ký thất bại", error.message);
+    }
+  }
   return (
     
     <SafeAreaView style={globalStyles.safeArea}>
@@ -130,7 +152,9 @@ const SignInScreen = () => {
       />  
       </View>
 
-      <TouchableOpacity style={styles.signInBtn}>
+      <TouchableOpacity style={styles.signInBtn}
+      onPress={()=> handleSignUp()}
+      >
          <Text style={styles.signInTxt}>Đăng ký</Text>
       </TouchableOpacity>
 

@@ -6,9 +6,9 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react'
 const tags = [
     { id: 'Home', name: 'Trang chủ', iconName: 'home-outline' ,iconSetName:'home'},
-    { id: 'LogIn', name: 'Thẻ', iconName: 'bookmark-outline', iconSetName:'bookmark' },
-    { id: 'Home1', name: 'Tôi', iconName: 'person-outline',iconSetName: 'person' },
-    { id: 'AdminHome', name: 'Thông báo', iconName: 'notifications-outline',iconSetName:'notifications' },
+    { id: 'Home1', name: 'Thẻ', iconName: 'bookmark-outline', iconSetName:'bookmark' },
+    { id: 'Profile', name: 'Tôi', iconName: 'person-outline',iconSetName: 'person' },
+    { id: 'SearchScreen', name: 'Thông báo', iconName: 'notifications-outline',iconSetName:'notifications' },
   ];
 const BottomNavigation = () => {
     
