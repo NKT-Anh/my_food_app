@@ -9,7 +9,7 @@ import { db } from '../../Firebase/FirebaseConfig';
 import { addDoc,collection } from 'firebase/firestore';
 import axios from 'axios';
 import ImageModal from '../../Modal/ImageModal';
-
+import LoadScreen from '../../component/LoadScreen';
 
 import * as ImagePicker from 'expo-image-picker';
 import { addTag, defaultTags, removeTag } from '../../component/TagManager';
@@ -29,6 +29,7 @@ const AddFood = () => {
     const CLOUD_NAME = 'dtqo1fvv9';
     const UPLOAD_PRESET = 'anhfoodapp';
 
+    const [loading,setLoading] = useState(false);
     const navigation = useNavigation();
 
    
@@ -48,6 +49,7 @@ const AddFood = () => {
             Alert.alert('Thông báo', 'Nhập đủ thông tin');
             return;
         }
+        setLoading(true);
         const data = new FormData();
         data.append('file',{
             uri:foodImage,
@@ -61,6 +63,7 @@ const AddFood = () => {
                 data,
                 {headers:{'Content-Type': 'multipart/form-data'}}
             );
+            setLoading(false);
             const uploadedUrl = response.data.secure_url;
             Alert.alert('Upload thành công!', uploadedUrl);
             saveFood(uploadedUrl);
@@ -76,6 +79,7 @@ const AddFood = () => {
             Alert.alert("Điền thông tin","Nhập đầy đủ thông tin")
             return;
         }
+        
         try{
             const foodCollection = collection(db, 'foods');
             await addDoc(foodCollection,{
@@ -90,6 +94,7 @@ const AddFood = () => {
                 createdAt: new Date(),
 
             })
+            
             Alert.alert('Thành công', 'Đã thêm món ăn vào danh sách.');
             navigation.goBack();
         }
@@ -116,6 +121,7 @@ const AddFood = () => {
   return (
     <View style={{flex:1}}>
         <SafeAreaView style={styles.SafeArea}>
+            <LoadScreen isLoading={loading} text='Chờ một chút.....' />
         <View style={styles.viewBack}>
                 <AntDesign name="back" size={24} color="black"
                 style={styles.iconBack}

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, ActivityIndicator, StyleSheet,Text } from 'react-native';
 
 const Loading = ({ isLoading,text='Đang tải ....' }) => {
-  if (!isLoading) return null; // Không hiển thị gì nếu không đang tải
+  if (!isLoading) return null;
 
   return (
     <View style={styles.spinnerContainer}>
@@ -22,7 +22,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)', // Nền mờ
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
   loadingText: {
     marginTop: 10,

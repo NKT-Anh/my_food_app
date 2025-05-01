@@ -15,14 +15,17 @@ import globalStyles from '../globals/globalStyles';
 import { useNavigation } from '@react-navigation/native';
 
 import BottomNavigation from '../navigator/BottomNavigation';
-import MenuNavigation from '../navigator/MenuNavigation';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { MaterialIcons, Feather,FontAwesome5 ,MaterialCommunityIcons} from '@expo/vector-icons';
 import Style from '../globals/style';
 import style from '../globals/style';
 import TagComponent from '../component/TagComponent';
-import { loadFoodHome } from '../Firebase/FirebaseAPI';
+import { addToCart, loadFoodHome } from '../Firebase/FirebaseAPI';
 import Loading from '../component/Loading';
+import FoodItem from './FoodItem';
+
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
+
 // import { NavigationContainer } from '@react-navigation/native';
 // import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 // import Ionicons from '@expo/vector-icons/Ionicons';
@@ -45,13 +48,35 @@ const HomeScreen = () => {
     const [selectedTag, setSelectedTag] = useState(null);
     const [filteredFood, setFilteredFood] = useState([]);
     const [loading, setLoading] = useState(true);
-
+    const [userId, setUserId] = useState(null);
     const [cartItems, setCartItems] = useState([]);
+    const [selectedFood, setSelectedFood] = useState(null);
+    // const [foodItem,setFoodItem] = useState();
+    const [modalVisible, setModalVisible] = useState(false);
 
-    const handleAddToCart = (item) => {
-      setCartItems(prev => [...prev, item]);
+    const openModal = (foodItem) => {
+      if (foodItem !== selectedFood){
+         setSelectedFood(foodItem);
+         setModalVisible(true);
+      }
+   };
+    const closeModal = (foodItem) =>{
+      setSelectedFood(null);
+      setModalVisible(false)
+    }
+
+    const handleAddToCart = async (userId, foodItem) => {
+      const result = await addToCart(userId, foodItem);
+      if (result.success) {
+        Alert.alert("Đã thêm món ăn vào giỏ hàng", result.message);
+        closeModal(); // Đóng modal sau khi thêm vào giỏ hàng
+      } else {
+        Alert.alert("Lỗi", result.message);
+      }
     };
-
+    // const handleFoodItem = (foodItem) =>{
+    //   navigation.navigate('FoodItem',{userId,setFoodItem});
+    // }
 
     useEffect(()=>{
       const stopLoadFood = loadFoodHome((data)=>{
@@ -81,6 +106,23 @@ const HomeScreen = () => {
         setSelectedTag(tag);
       }
     };
+
+    useEffect(() =>{
+      const auth = getAuth();
+      const un = onAuthStateChanged(auth,(user) =>{
+        if(user){
+          console.log("Đã đăng nhập, userID:", user.uid);
+          if (user.uid !== userId) {
+            setUserId(user.uid);
+         }
+        }
+        else{
+          console.log("Chưa đăng nhập");
+        navigation.navigate('LogIn');
+        }
+      })
+      return () => un();
+    },[navigation])
   return (
     <View style={{ flex: 1 }}>
     
@@ -147,7 +189,7 @@ const HomeScreen = () => {
         {!loading && (filteredFood.length== 0 ?
         (<Text style={{ textAlign: 'center', marginTop: 20, color: '#666' }}>Chờ cập nhật.</Text>)
         :(filteredFood.map((item) => (
-          <TouchableOpacity  key={item.id} style={styles.foodCard}>
+          <TouchableOpacity  key={item.id} style={styles.foodCard} onPress={() => openModal(item)}>
             <View style={{flexDirection:'row'}}>
             <View style={{padding:10}}>
               <Image source={{ uri: item.foodImage }} style={styles.foodImage} />
@@ -178,7 +220,7 @@ const HomeScreen = () => {
               </View>
             </View>
             <View style={{right:10,position:'absolute'}}>
-            <TouchableOpacity onPress={() => handleAddToCart(item)} style={{ marginTop: 8 }}>
+            <TouchableOpacity onPress={() => handleFoodItem(item)} style={{ marginTop: 8 }}>
             <MaterialIcons name="add" size={24} color="blue" />
             </TouchableOpacity>
             </View>
@@ -191,6 +233,15 @@ const HomeScreen = () => {
     </ScrollView>
     </View>
     </View>
+    {selectedFood && (
+      <FoodItem
+      visible={modalVisible}
+      foodItem={selectedFood}
+      userId={userId}
+      onClose={closeModal}
+      onAddToCart={handleAddToCart}
+      />
+    )}
     </SafeAreaView>
   
     <BottomNavigation />

@@ -12,32 +12,45 @@ import { useNavigation } from '@react-navigation/native';
 import globalStyles from '../globals/globalStyles';
 import BottomNavigation from '../navigator/BottomNavigation';
 import { LogIn } from '../Firebase/FirebaseAPI';
+import LoadScreen from '../component/LoadScreen';
 
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword , setShowPassword] = useState(false);
+
   const navigation = useNavigation();
   const [selectedIndex, setSelectedIndex] = useState(1);
 
+  const [loading, setLoading] = useState(false);
+ 
   const handleLogIn = async () => {
     if (!email || !password) {
       Alert.alert("Thông báo", "Vui lòng nhập tài khoản và mật khẩu");
       return;
     }
+    setLoading(true);
 
     const result = await LogIn({ email, password });
+    setLoading(false);
   
     if (result.success) {
-      navigation.navigate("Home");
+      const {role} = result;
+      if(role === 'Admin'){
+        navigation.navigate('AdminHome')
+      }
+      else{
+        navigation.navigate('Home')
+      }
     } else {
       Alert.alert("Đăng nhập thất bại", result.error);
     }
   }
 
   return (
+    
     <View style={{ flex: 1 }}>
-
+      
     <SafeAreaView style={globalStyles.safeArea}>
       <View style={globalStyles.topNav}>
         <Text style={globalStyles.navTitle}>My food app</Text>
@@ -84,17 +97,18 @@ const LoginScreen = () => {
             />
             </View>
             
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('ForgetPassword')}>
             <View >
               <Text style={styles.forgotPassword}>Quên mật khẩu?</Text>
             </View>
             </TouchableOpacity>
-            
+            <LoadScreen isLoading={loading} text="Đang đăng nhập..." />
             <TouchableOpacity
             onPress={()=> handleLogIn()}
             style={styles.loginButton}>
               <Text style={styles.loginText}>Đăng nhập</Text>
             </TouchableOpacity>
+            
             <Text style={{ color: '#FFA726' }}>Khác</Text>
 
 
@@ -122,7 +136,7 @@ const LoginScreen = () => {
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
     </SafeAreaView>
-    <BottomNavigation/>
+    
     </View>
   );
 };

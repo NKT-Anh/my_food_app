@@ -40,7 +40,7 @@ const SignInScreen = () => {
       return;
     }
     try{
-      const result = await signInUser({email,password,fullName,address:''})
+      const result = await signInUser({email,password,fullName,phone,address:''})
       if(result.success)
       {
         Alert.alert("Đăng ký thành công", "Chúc mừng bạn đã đăng ký thành công!");

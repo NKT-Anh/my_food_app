@@ -1,27 +1,51 @@
-import { StyleSheet, Text, View,Image,ScrollView, TouchableOpacity } from 'react-native'
+import { StyleSheet, Text, View,Image,ScrollView, TouchableOpacity, Alert } from 'react-native'
 import {MaterialCommunityIcons ,Ionicons,MaterialIcons,AntDesign,FontAwesome} from '@expo/vector-icons';
-
 import React from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context';
 import style from '../../globals/style';
+import {useNavigation} from'@react-navigation/native'
+import { LogOut } from '../../Firebase/FirebaseAPI';
 
 const Profile = () => {
 
+    const navigation = useNavigation();
     const handleLogOut = async () =>{
-        const result = await LogOut();
-        if(result.success){
-            
-        }
+        Alert.alert('Thông báo',"Bạn có muốn đăng xuất",[
+            {
+                text:"Hủy",
+                style:"cancel",
+            },
+            {
+                text:"Đăng xuất",
+                onPress: async  () =>{
+                    const result = await LogOut();
+                    if(result.success){
+                        navigation.reset({
+                            index:0,
+                            routes:[{name: "LogIn"}],
+                        })
+                    }
+                    else{
+                        Alert.alert("Lỗi", "Không thể đăng xuất. Vui lòng thử lại!");
+                }
+            }
+            }
+        ])
+        
     }
   return (
     <View style={{flex:1}}>
         <SafeAreaView style={{flex:1}}>
         <ScrollView contentContainerStyle={{ flexGrow: 1 ,paddingBottom:100}}>
             <View style={{flex:1}}>
-            <View style={styles.viewNav}>
-                <View style={styles.iconBack}>
+            <View style={styles.viewNav}
+            
+            >
+                <TouchableOpacity onPress={()=> navigation.goBack()}>
+                <View style={styles.iconBack}  >
                     <Ionicons name="arrow-back" size={20} color="black" />
                 </View>
+                </TouchableOpacity>
             </View>
             <View style={styles.container}>
                 <View style={styles.drawImage}>
@@ -50,7 +74,9 @@ const Profile = () => {
                 </View>
 
                 <View style={styles.profileDetailList}> 
-                    <TouchableOpacity>
+                    <TouchableOpacity
+                    onPress={()=> navigation.navigate('ProfileDetail')}
+                    >
                     <View style={styles.profileDetail}>
                         <MaterialCommunityIcons style={styles.iconRight} name="account-edit-outline" size={24} color="#49a083" />
                         <Text style={styles.text}>
@@ -120,7 +146,9 @@ const Profile = () => {
                     <View style={{width:'100%', borderWidth:0.5,}}></View>
 
 
-                    <TouchableOpacity>
+                    <TouchableOpacity 
+                    onPress={()=> handleLogOut()}
+                    >
                     <View style={styles.profileDetail}>
                         <AntDesign style={styles.iconRight} name="logout" size={24} color="red" />
                         <Text style={styles.text}>

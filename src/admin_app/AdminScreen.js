@@ -1,4 +1,4 @@
-import {StyleSheet, Text, TouchableOpacity, View ,TouchableWithoutFeedback} from 'react-native'
+import {StyleSheet, Text, TouchableOpacity, View ,TouchableWithoutFeedback, Alert} from 'react-native'
 import React, { useState } from 'react'
 import { useNavigation  } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +9,7 @@ import FoodScreen from './FoodScreen';
 import OrderScreen from './OrderScreen';
 import StatisticalScreen from './StatisticalScreen';
 import UserScreen from './UserScreen';
+import { LogOut } from '../Firebase/FirebaseAPI';
 const menuItem=[
     {
         key:'1',
@@ -25,6 +26,30 @@ const AdminScreen = () => {
     const [selectedMenu, setSelectedMenu] = useState('1')
     const [sidebar, setSidebar] = useState(true);
     const navigation = useNavigation();
+    const handleLogOut = () =>{
+        Alert.alert("Xác nhận", "Bạn có chắc muốn đăng xuất?",[
+            {
+                text:"Hủy",
+                style:"cancel",
+            },
+            {
+                text:"Đăng xuất",
+                onPress: async()=>{
+                    const result = await LogOut();
+                    if(result.success){
+                        navigation.reset({
+                            index:0,
+                            routes:[{name:"LogIn"},]
+                        });
+                    }
+                    else{
+                        Alert.alert("Lỗi", "Không thể đăng xuất. Vui lòng thử lại!");
+                    }
+                }
+
+            }
+        ])
+    }
     const renderItem = () =>{
         
         switch(selectedMenu){
@@ -88,7 +113,7 @@ const AdminScreen = () => {
                         ]}
                         onPress={()=>{
                             if(item.key == '5'){
-                                navigation.navigate('LogIn');
+                                handleLogOut();
                             }
             
                             setSelectedMenu(item.key)}
