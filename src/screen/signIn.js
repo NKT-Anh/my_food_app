@@ -23,7 +23,7 @@ import Fontisto from '@expo/vector-icons/Fontisto';
 import globalStyles from '../globals/globalStyles';
 import BottomNavigation from '../navigator/BottomNavigation';
 import { signInUser } from '../Firebase/FirebaseAPI';
-
+import LoadScreen from '../component/LoadScreen';
 const SignInScreen = () => {
   const [fullName,setFullName] = useState('')
   const [phone , setPhone] =useState('');
@@ -32,6 +32,7 @@ const SignInScreen = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword,setShowPassword] = useState(false);
   const [showConfirmPassword,setShowConfirmPassword] = useState(false);
+  const [loading,setLoading] = useState(false);
   const navigation = useNavigation();
 
   const handleSignUp = async () =>{
@@ -40,15 +41,18 @@ const SignInScreen = () => {
       return;
     }
     try{
+      setLoading(true);
       const result = await signInUser({email,password,fullName,phone,address:''})
       if(result.success)
       {
         Alert.alert("Đăng ký thành công", "Chúc mừng bạn đã đăng ký thành công!");
         navigation.navigate('LogIn');
       }
+      
       else {
         Alert.alert("Lỗi", result.error);
       }
+      setLoading(false);
     }
     catch(error){
       Alert.alert("Đăng ký thất bại", error.message);
@@ -57,6 +61,7 @@ const SignInScreen = () => {
   return (
     
     <SafeAreaView style={globalStyles.safeArea}>
+      <LoadScreen isLoading={loading} text='Đăng đăng ký...'/>
       <View style={globalStyles.topNav}>
         <Text style={globalStyles.navTitle}>My food app</Text>
       </View>

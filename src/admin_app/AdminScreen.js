@@ -1,5 +1,5 @@
 import {StyleSheet, Text, TouchableOpacity, View ,TouchableWithoutFeedback, Alert} from 'react-native'
-import React, { useState } from 'react'
+import React, { useState,useContext } from 'react'
 import { useNavigation  } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import GlobalStyles from '../globals/globalStyles';
@@ -10,6 +10,7 @@ import OrderScreen from './OrderScreen';
 import StatisticalScreen from './StatisticalScreen';
 import UserScreen from './UserScreen';
 import { LogOut } from '../Firebase/FirebaseAPI';
+import { UserContext } from '../Firebase/UserContext';
 const menuItem=[
     {
         key:'1',
@@ -22,10 +23,20 @@ const menuItem=[
 ]
 
 const AdminScreen = () => {
+    const {user} = useContext(UserContext);
+    if(!user){
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>Về đi</Text>
+        </View>
+    }
+    else{
+        console.log("I am comeback" ,user.fullName)
+    }
 
     const [selectedMenu, setSelectedMenu] = useState('1')
     const [sidebar, setSidebar] = useState(true);
     const navigation = useNavigation();
+
     const handleLogOut = () =>{
         Alert.alert("Xác nhận", "Bạn có chắc muốn đăng xuất?",[
             {
@@ -98,7 +109,7 @@ const AdminScreen = () => {
                     <View style={styles.navMenu}>
                     
                     <Text style={styles.navTitle}>
-                        Admin
+                        Xin chào {user.fullName}
                     </Text>
                     <TouchableOpacity onPress={() => setSidebar(false)} style={styles.closeBtn} >
                     <Ionicons name="close" size={24} color="white" />

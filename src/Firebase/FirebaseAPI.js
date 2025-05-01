@@ -149,16 +149,25 @@ export const removeFood  = async (foodId) => {
     }
 }
 
-export const addToCart = async (userId , foodItem) =>{
+export const addToCart = async (userId , {foodItem,soLuong,tongGia}) =>{
     try{
         const userReference  = doc(db,"User" , userId);
         const userDoc = await getDoc(userReference);
 
         if(userDoc.exists()){
             const userData = userDoc.data();
-            const cart = userData.cart || [];
+            let cart = userData.cart || [];
+            const index = cart.findIndex(item => item.foodId == foodItem.foodId);
+            if(index>=0){
+                cart[index].soLuong +=soLuong;
+                cart[index].tongGia +=tongGia;
+            }
+            else{
+                cart.push({foodItem,soLuong,tongGia})
+            }
+
             await updateDoc(userReference,{
-                cart:arrayUnion(foodItem),
+                cart
 
             });
             return{success:true, message:"Đã thêm vào giỏ hàng"};
@@ -176,6 +185,10 @@ export const addToCart = async (userId , foodItem) =>{
 export const loadCart = async (userId,cartItem) =>{
     try{
         const userReference = doc(db,"User",userId)
+        const userDoc = await getDoc(userReference);
+        if(!userDoc.exists()){
+            
+        }
     }
     catch(error){
 

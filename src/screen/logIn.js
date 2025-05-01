@@ -35,13 +35,13 @@ const LoginScreen = () => {
     setLoading(false);
   
     if (result.success) {
-      const {role} = result;
-      if(role === 'Admin'){
-        navigation.navigate('AdminHome')
-      }
-      else{
+      // const {role} = result;
+      // if(role === 'Admin'){
+      //   navigation.navigate('AdminHome')
+      // }
+      // else{
         navigation.navigate('Home')
-      }
+      //}
     } else {
       Alert.alert("Đăng nhập thất bại", result.error);
     }

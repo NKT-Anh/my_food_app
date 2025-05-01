@@ -1,13 +1,23 @@
 import { StyleSheet, Text, View,Image,ScrollView, TouchableOpacity, Alert } from 'react-native'
 import {MaterialCommunityIcons ,Ionicons,MaterialIcons,AntDesign,FontAwesome} from '@expo/vector-icons';
-import React from 'react'
+import React, { useContext, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context';
 import style from '../../globals/style';
 import {useNavigation} from'@react-navigation/native'
 import { LogOut } from '../../Firebase/FirebaseAPI';
-
+import { UserContext } from '../../Firebase/UserContext';
 const Profile = () => {
+    const {user} = useContext(UserContext)
 
+    if (!user) {
+        return (
+          <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <Text>Bạn chưa đăng nhập</Text>
+          </SafeAreaView>
+        );
+      }
+    const [avatar, setAvatar] = useState(user?.avatar || '');
+    const [role,setRole]  = useState(user?.role || '')
     const navigation = useNavigation();
     const handleLogOut = async () =>{
         Alert.alert('Thông báo',"Bạn có muốn đăng xuất",[
@@ -49,13 +59,13 @@ const Profile = () => {
             </View>
             <View style={styles.container}>
                 <View style={styles.drawImage}>
-                        <Image source={require('../../../assets/images/nhanvien01.jpg')}
+                        <Image source= { avatar ? {uri:user.avatar} : require('../../../assets/images/nhanvien01.jpg')}
                         style={styles.imageProfile}
                         />
                 </View>
                 <View style={styles.textAddress}>
-                    <Text style={styles.name}>Đân Đồn</Text>
-                    <Text style={styles.address}>Đồng Nice, Bình Dương</Text>
+                    <Text style={styles.name}>{user.fullName}</Text>
+                    <Text style={styles.address}>{user.address}</Text>
                 </View>
 
                 <View style={styles.viewOrder}>
@@ -86,7 +96,7 @@ const Profile = () => {
                     </View>
                     </TouchableOpacity>
                     <View style={{width:'100%', borderWidth:0.5,}}></View>
-
+                    
                     <TouchableOpacity>
                     <View style={styles.profileDetail}>
                         <FontAwesome  style={styles.iconRight} name="shopping-cart" size={24} color="#49a083" />
@@ -112,37 +122,42 @@ const Profile = () => {
 
                     <TouchableOpacity>
                     <View style={styles.profileDetail}>
-                        <MaterialCommunityIcons style={styles.iconRight} name="account-edit-outline" size={24} color="#49a083" />
+                        <MaterialIcons name="password" size={24} color="#49a083" style={styles.iconRight}/>
                         <Text style={styles.text}>
-                            Thông tin người dùng
+                            Đổi mật khẩu
                         </Text>
                         <MaterialIcons style={styles.iconLeft} name="navigate-next" size={24} color="gray" />
                     </View>
                     </TouchableOpacity>
                     <View style={{width:'100%', borderWidth:0.5,}}></View>
 
-
+                    {user.role  !== "admin  " && (
+                    <>
                     <TouchableOpacity>
                     <View style={styles.profileDetail}>
-                        <MaterialCommunityIcons style={styles.iconRight} name="account-edit-outline" size={24} color="#49a083" />
+
+                        <AntDesign name="deleteuser" size={24} color="#49a083" style={styles.iconRight} />
                         <Text style={styles.text}>
-                            Thông tin người dùng
+                            Yêu cầu xóa tài khoản
                         </Text>
                         <MaterialIcons style={styles.iconLeft} name="navigate-next" size={24} color="gray" />
                     </View>
                     </TouchableOpacity>
+                    </>)}
                     <View style={{width:'100%', borderWidth:0.5,}}></View>
 
-
-                    <TouchableOpacity>
+                    {user.role  !== "admin" && (
+                    <>
+                    <TouchableOpacity onPress={()=> navigation.navigate('AdminHome')}>
                     <View style={styles.profileDetail}>
-                        <MaterialCommunityIcons style={styles.iconRight} name="account-edit-outline" size={24} color="#49a083" />
-                        <Text style={styles.text}>
-                            Thông tin người dùng
+                        <MaterialIcons style={styles.iconRight} name="admin-panel-settings" size={24} color="#0056b3" />
+                        <Text style={{...styles.text , color:'#0056b3'}}>
+                            Quản lý cửa hàng.
                         </Text>
-                        <MaterialIcons style={styles.iconLeft} name="navigate-next" size={24} color="gray" />
+                        <MaterialIcons style={styles.iconLeft} name="navigate-next" size={24} color="#0056b3" />
                     </View>
                     </TouchableOpacity>
+                    </>)}
                     <View style={{width:'100%', borderWidth:0.5,}}></View>
 
 
@@ -151,10 +166,10 @@ const Profile = () => {
                     >
                     <View style={styles.profileDetail}>
                         <AntDesign style={styles.iconRight} name="logout" size={24} color="red" />
-                        <Text style={styles.text}>
+                        <Text style={{...styles.text,color:'red'}}>
                             Đăng xuất
                         </Text>
-                        <MaterialIcons style={styles.iconLeft} name="navigate-next" size={24} color="gray" />
+                        <MaterialIcons style={styles.iconLeft} name="navigate-next" size={24} color="red" />
                     </View>
                     </TouchableOpacity>
                     

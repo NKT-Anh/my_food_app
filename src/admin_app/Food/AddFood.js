@@ -22,10 +22,12 @@ const AddFood = () => {
     const [restaurantName,setRestaurantName] = useState('');
     const [restaurantAddress,setRestaurantAddress] = useState('');
     const [restaurantPhone,setRestaurantPhone] = useState('');
-    const [description, setDescription] = useState('');
-    const [modalVisible, setModalVisible] = useState(false);
+
     const [tag, setTag] = useState([]);
     const [tagInput, setTagInput] = useState(''); 
+
+    const [description, setDescription] = useState('');
+    const [modalVisible, setModalVisible] = useState(false);
     const CLOUD_NAME = 'dtqo1fvv9';
     const UPLOAD_PRESET = 'anhfoodapp';
 
