@@ -17,8 +17,14 @@ import Profile from '../screen/profile/Profile';
 import SearchScreen from '../screen/SearchScreen';
 import ProfileDetail from '../screen/profile/ProfileDetail';
 import FoodItem from '../screen/FoodItem';
-
-
+import Cart from '../screen/Cart/Cart';
+import Favorites from '../screen/Favorites/Favorites';
+import ShippingOrders from '../screen/Orders/ShippingOrders';
+import CompletedOrders from '../screen/Orders/CompletedOrders';
+import PendingOrders from '../screen/Orders/PendingOrders';
+import InProgressOrders from '../screen/Orders/InProgressOrders';
+import Order from '../screen/Cart/Order';
+import HomeShipper from '../Shipper/HomeShipper';
 const Stack = createNativeStackNavigator();
 
 
@@ -41,17 +47,25 @@ const ScreensNavigation = () => {
         <Stack.Screen name="OrderScreen" component={OrderScreen}/>
         <Stack.Screen name="StatisticalScreen" component={StatisticalScreen}/>
         <Stack.Screen name="UserScreen" component={UserScreen}/>
+        <Stack.Screen name="Favorites" component={Favorites}/>
 
         <Stack.Screen name="ForgetPassword" component={ForgetPassword}/>
         <Stack.Screen name="Profile" component={Profile}/>
         <Stack.Screen name="ProfileDetail" component={ProfileDetail}/>
 
         <Stack.Screen name="SearchScreen" component={SearchScreen}/>
-        <Stack.Screen name="Cart" component={CartScreen} options={{ title: 'Giỏ Hàng' }} />
+        <Stack.Screen name="CartScreen" component={CartScreen} options={{ title: 'Giỏ Hàng' }} />
 
         <Stack.Screen name="AddFood" component={AddFood}/>
         <Stack.Screen name="FoodItem" component={FoodItem}/>
+        <Stack.Screen name="Cart" component={Cart} options={{ title: 'Giỏ Hàng' }}/>
         
+        <Stack.Screen name="PendingOrders" component={PendingOrders} options={{ title: 'Chờ xác nhận' }} />
+        <Stack.Screen name="ShippingOrders" component={ShippingOrders} options={{ title: 'Chờ giao hàng' }} />
+        <Stack.Screen name="CompletedOrders" component={CompletedOrders} options={{ title: 'Đã đặt' }} />
+        <Stack.Screen name="InProgressOrders" component={InProgressOrders} options={{ title: 'Đang giao' }} />
+         <Stack.Screen name="Order" component={Order} options={{ title: 'Trạng thái đơn hàng' }} />
+          <Stack.Screen name="HomeShipper" component={HomeShipper} options={{ title: 'Nhận đơn hàng' }} />
 
       </Stack.Navigator>
   )

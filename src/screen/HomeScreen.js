@@ -20,7 +20,7 @@ import { MaterialIcons, Feather,FontAwesome5 ,MaterialCommunityIcons} from '@exp
 import Style from '../globals/style';
 import style from '../globals/style';
 import TagComponent from '../component/TagComponent';
-import { addToCart, loadFoodHome } from '../Firebase/FirebaseAPI';
+import { addToCart, loadFoodHome, removeFavoritesFood } from '../Firebase/FirebaseAPI';
 import Loading from '../component/Loading';
 import FoodItem from './FoodItem';
 
@@ -53,7 +53,7 @@ const HomeScreen = () => {
     const [selectedFood, setSelectedFood] = useState(null);
     // const [foodItem,setFoodItem] = useState();
     const [modalVisible, setModalVisible] = useState(false);
-
+    const [favoriteItems, setFavoriteItems] = useState([]);
     const openModal = (foodItem) => {
       if (foodItem !== selectedFood){
          setSelectedFood(foodItem);
@@ -65,13 +65,51 @@ const HomeScreen = () => {
       setModalVisible(false)
     }
 
-    const handleAddToCart = async (userId, foodItem) => {
-      const result = await addToCart(userId, foodItem);
+    const handleAddToFavorites = async (foodId) => {
+      if (!userId) {
+        Alert.alert("Lỗi", "Vui lòng đăng nhập để thêm vào danh sách yêu thích.");
+        return;
+      }
+      if(favoriteItems.includes(foodId)){
+        const result  =  await removeFavoritesFood(userId,foodId);
+        if (result.success) {
+          Alert.alert("Đã xóa món ăn khỏi danh sách yêu thích", result.message);
+          setFavoriteItems(favoriteItems.filter(item => item !== foodId));
+        } else {
+          Alert.alert("Lỗi", result.message);
+        }
+
+      }
+      else{
+        const result = await addToFavoritesFood(userId, foodId);
+        if (result.success) {
+          Alert.alert("Đã thêm món ăn vào danh sách yêu thích", result.message);
+          setFavoriteItems([...favoriteItems, foodId]);
+        } else {
+          Alert.alert("Lỗi", result.message);
+        }
+      }
+
+    }
+
+
+    const handleAddToCart = async (userId, foodItem,soLuong,tongGia) => {
+      const result = await addToCart(userId, foodItem,soLuong,tongGia);
       if (result.success) {
         Alert.alert("Đã thêm món ăn vào giỏ hàng", result.message);
-        closeModal(); // Đóng modal sau khi thêm vào giỏ hàng
+        closeModal();
       } else {
         Alert.alert("Lỗi", result.message);
+      }
+    };
+
+    const handleLoadCart = async (userId) => {
+      const result = await loadCart(userId, setCartItems); 
+      if (result.success) {
+        console.log("Giỏ hàng đã được tải thành công:", result.cart);
+        navigation.navigate('CartScreen', { cartItems: result.cart });àng
+      } else {
+        console.log("Lỗi khi tải giỏ hàng:", result.message);
       }
     };
     // const handleFoodItem = (foodItem) =>{
@@ -138,7 +176,7 @@ const HomeScreen = () => {
         />
       </View>
       <TouchableOpacity style={styles.cartIcon} 
-       onPress={() => navigation.navigate('Cart', { cartItems })}
+       onPress={() => navigation.navigate('Cart')}
         
         >
         <MaterialIcons name="shopping-cart" size={24} color={Style.colors.cam} />
@@ -219,11 +257,18 @@ const HomeScreen = () => {
                 ))}
               </View>
             </View>
-            <View style={{right:10,position:'absolute'}}>
-            <TouchableOpacity onPress={() => handleFoodItem(item)} style={{ marginTop: 8 }}>
-            <MaterialIcons name="add" size={24} color="blue" />
-            </TouchableOpacity>
-            </View>
+            <View style={{ right: 10, position: 'absolute' }}>
+                  <TouchableOpacity
+                    onPress={() => handleAddToFavorites(item.id)}
+                    style={{ marginTop: 8 }}
+                  >
+                    <MaterialIcons
+                      name="favorite"
+                      size={24}
+                      color={favoriteItems.includes(item.id) ? 'pink' : 'black'}
+                    />
+                  </TouchableOpacity>
+                </View>
             </View>
           </TouchableOpacity>
           

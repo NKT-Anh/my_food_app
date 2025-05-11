@@ -59,9 +59,15 @@ const Profile = () => {
             </View>
             <View style={styles.container}>
                 <View style={styles.drawImage}>
-                        <Image source= { avatar ? {uri:user.avatar} : require('../../../assets/images/nhanvien01.jpg')}
+                    <Image 
+                       source={
+                        typeof avatar === 'string' && avatar.trim() !== ''
+                          ? { uri: avatar }
+                          : require('../../../assets/images/nhanvien01.jpg')
+                      }
                         style={styles.imageProfile}
                         />
+
                 </View>
                 <View style={styles.textAddress}>
                     <Text style={styles.name}>{user.fullName}</Text>
@@ -97,14 +103,12 @@ const Profile = () => {
                     </TouchableOpacity>
                     <View style={{width:'100%', borderWidth:0.5,}}></View>
                     
-                    <TouchableOpacity>
-                    <View style={styles.profileDetail}>
-                        <FontAwesome  style={styles.iconRight} name="shopping-cart" size={24} color="#49a083" />
-                        <Text style={styles.text}>
-                            Giỏ hàng
-                        </Text>
-                        <MaterialIcons style={styles.iconLeft} name="navigate-next" size={24} color="gray" />
-                    </View>
+                    <TouchableOpacity onPress={() => navigation.navigate('Order')}>
+                        <View style={styles.profileDetail}>
+                            <FontAwesome style={styles.iconRight} name="shopping-cart" size={24} color="#49a083" />
+                            <Text style={styles.text}>Đơn hàng</Text>
+                            <MaterialIcons style={styles.iconLeft} name="navigate-next" size={24} color="gray" />
+                        </View>
                     </TouchableOpacity>
                     <View style={{width:'100%', borderWidth:0.5,}}></View>
 
@@ -131,7 +135,7 @@ const Profile = () => {
                     </TouchableOpacity>
                     <View style={{width:'100%', borderWidth:0.5,}}></View>
 
-                    {user.role  !== "admin  " && (
+                    {user.role  !== "Admin" && (
                     <>
                     <TouchableOpacity>
                     <View style={styles.profileDetail}>
@@ -146,7 +150,7 @@ const Profile = () => {
                     </>)}
                     <View style={{width:'100%', borderWidth:0.5,}}></View>
 
-                    {user.role  !== "admin" && (
+                    {user.role  !== "user" && (
                     <>
                     <TouchableOpacity onPress={()=> navigation.navigate('AdminHome')}>
                     <View style={styles.profileDetail}>
@@ -160,6 +164,18 @@ const Profile = () => {
                     </>)}
                     <View style={{width:'100%', borderWidth:0.5,}}></View>
 
+                    {user.role === "shipper" && (
+                        <>
+                            <TouchableOpacity onPress={() => navigation.navigate('HomeShipper')}>
+                                <View style={styles.profileDetail}>
+                                    <MaterialIcons style={styles.iconRight} name="local-shipping" size={24} color="#49a083" />
+                                    <Text style={styles.text}>Trang chủ Shipper</Text>
+                                    <MaterialIcons style={styles.iconLeft} name="navigate-next" size={24} color="gray" />
+                                </View>
+                            </TouchableOpacity>
+                            <View style={{ width: '100%', borderWidth: 0.5 }}></View>
+                        </>
+                    )}
 
                     <TouchableOpacity 
                     onPress={()=> handleLogOut()}

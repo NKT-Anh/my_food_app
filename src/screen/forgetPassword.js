@@ -1,82 +1,166 @@
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
-import React from 'react'
+import React, { useState } from 'react';
+import { 
+  StyleSheet, Text, TextInput, TouchableOpacity, View, Alert, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard 
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import globalStyles from '../globals/globalStyles';
-import style from '../globals/style';
+import { resetPasswordEmail } from '../Firebase/FirebaseAPI';
+
 const ForgetPassword = () => {
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleResetPassword = async () => {
+    if (!email) {
+      setError("Vui lòng nhập email của bạn.");
+      return;
+    }
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      setError("Email không hợp lệ.");
+      return;
+    }
+
+    setError('');
+    setLoading(true);
+    try {
+      const result = await resetPasswordEmail(email); 
+      setLoading(false);
+
+      if (result.success) {
+        Alert.alert("Thành công", "Email đặt lại mật khẩu đã được gửi. Vui lòng kiểm tra hộp thư của bạn.");
+        setEmail('');
+      } else {
+        Alert.alert("Thất bại", result.error || "Không thể gửi email đặt lại mật khẩu.");
+      }
+    } catch (error) {
+      setLoading(false);
+      Alert.alert("Lỗi", "Đã xảy ra lỗi khi gửi email đặt lại mật khẩu.");
+    }
+  };
+
   return (
     <View style={{ flex: 1 }}>
-    <SafeAreaView style={globalStyles.safeArea}>
-    <View style={globalStyles.topNav}>
-        <Text style={globalStyles.navTitle}>
-            Quên mật khẩu
-        </Text>
-    </View>
-    <View style={globalStyles.container}>
-      <Text style={styles.text}>
-        Đặt lại mật khẩu
-      </Text>
-      <Text style={styles.textResset}>
-        Nhập email đăng ký để nhận mật khẩu mới
-      </Text>
-      <TextInput
-      style={styles.input}
-      placeholder='Email'
-      keyboardType='email-address'
-      
-      />
-      <TouchableOpacity style={styles.btn}>
-       <Text style={styles.Reset} > Đặt lại mật khẩu</Text>
-      </TouchableOpacity>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.nav}>
+          <Text style={styles.navTitle}>Quên mật khẩu</Text>
+        </View>
 
-    </View>
-    </SafeAreaView>
-    </View>
-  )
-}
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === "android" ? "padding" : "height"} 
+          style={styles.container}
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.innerContainer}>
+              <Text style={styles.title}>Đặt lại mật khẩu</Text>
+              <Text style={styles.subtitle}>Nhập email đăng ký để nhận mật khẩu mới</Text>
+              <TextInput
+                style={[styles.input, error ? styles.inputError : null]}
+                placeholder="Nhập Email"
+                placeholderTextColor="#999"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                value={email}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  setError('');
+                }}
+              />
+              {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-export default ForgetPassword
+              <TouchableOpacity 
+                style={[styles.btn, loading && styles.btnDisabled]} 
+                onPress={handleResetPassword}
+                disabled={loading}
+              >
+                <Text style={styles.btnText}>{loading ? "Đang gửi..." : "Đặt lại mật khẩu"}</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </View>
+  );
+};
+
+export default ForgetPassword;
 
 const styles = StyleSheet.create({
-    input:{
-        borderWidth:1,
-        borderRadius:5,
-        width:'90%',
-        paddingHorizontal:10,
-        margin:15,
-
-    },
-    btn:{
-        width: '90%',
-        height: 50,
-        backgroundColor: '#FFB347',
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderRadius: 10,
-        marginBottom: 20,
-        alignSelf:'center',
-        borderColor:'black',
-        borderWidth:1,
-        
-    },
-    text:{
-        fontSize:20,
-        margin:15,
-        fontWeight:'600'
-        
-    },
-    textResset:{
-        color:'#c7d6ec',
-        fontSize:14,
-        margin:15,
-    },
-    Reset:{
-        fontSize:18,
-        color:'white',
-        fontWeight:'bold',
-        textShadowColor:'black',
-        textShadowRadius: 1,
-        textShadowOffset: { width: 1, height: 1 },
-    
-      },
-})
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+  },
+  nav: {
+    height: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FF8C00',
+  },
+  navTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFF',
+  },
+  container: {
+    flex: 1,
+    paddingHorizontal: 20,
+    justifyContent: 'center',
+  },
+  innerContainer: {
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FF8C00',
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  input: {
+    width: '100%',
+    height: 50,
+    backgroundColor: '#FFF',
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    marginBottom: 5, // Giảm khoảng cách để hiển thị lỗi gần input
+    borderWidth: 1,
+    borderColor: '#ddd',
+    fontSize: 16,
+    color: '#333',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  inputError: {
+    borderColor: 'red', // Đổi viền thành màu đỏ khi có lỗi
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 12,
+    alignSelf: 'flex-start',
+    marginBottom: 10,
+  },
+  btn: {
+    width: '100%',
+    height: 50,
+    backgroundColor: '#FF8C00',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 10,
+    elevation: 3,
+  },
+  btnDisabled: {
+    backgroundColor: '#FFDAB9',
+  },
+  btnText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+});

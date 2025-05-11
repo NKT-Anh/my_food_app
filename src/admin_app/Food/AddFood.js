@@ -6,7 +6,7 @@ import {AntDesign,EvilIcons,Ionicons } from '@expo/vector-icons';
 import {useNavigation} from '@react-navigation/native'
 import globalStyles from '../../globals/globalStyles';
 import { db } from '../../Firebase/FirebaseConfig';
-import { addDoc,collection } from 'firebase/firestore';
+import { addDoc,collection,updateDoc  } from 'firebase/firestore';
 import axios from 'axios';
 import ImageModal from '../../Modal/ImageModal';
 import LoadScreen from '../../component/LoadScreen';
@@ -34,7 +34,7 @@ const AddFood = () => {
     const [loading,setLoading] = useState(false);
     const navigation = useNavigation();
 
-   
+    
     const onPickCamera = async () =>{
         setModalVisible(false);
         const result = await ImagePicker.launchCameraAsync({mediaTypes: ImagePicker.MediaTypeOptions.Images,quality:1});
@@ -84,7 +84,7 @@ const AddFood = () => {
         
         try{
             const foodCollection = collection(db, 'foods');
-            await addDoc(foodCollection,{
+            const newFoodRef  = await addDoc(foodCollection,{
                 foodName,
                 foodPrice,
                 foodImage: uri,
@@ -96,6 +96,9 @@ const AddFood = () => {
                 createdAt: new Date(),
 
             })
+            await updateDoc(newFoodRef, {
+                foodId: newFoodRef.id,
+              });
             
             Alert.alert('Thành công', 'Đã thêm món ăn vào danh sách.');
             navigation.goBack();
@@ -106,6 +109,7 @@ const AddFood = () => {
         }
     }
     const handAddTag = () => {
+        if (tagInput.trim() === '' || tag.includes(tagInput.trim())) return;
         const newTag = addTag(tag,tagInput);
         setTag(newTag);
         setTagInput('');

@@ -1,14 +1,14 @@
 import { StyleSheet, Text, View } from 'react-native'
 import React from 'react'
 
-const UserDetailScreen = () => {
+const AddFavorites = () => {
   return (
     <View>
-      <Text>UserDetailScreen</Text>
+      <Text>AddFavorites</Text>
     </View>
   )
 }
 
-export default UserDetailScreen
+export default AddFavorites
 
 const styles = StyleSheet.create({})

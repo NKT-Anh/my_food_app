@@ -1,25 +1,26 @@
-import { StyleSheet, Text, View,Image,ScrollView, TouchableOpacity, Alert, TextInput } from 'react-native'
-import {MaterialCommunityIcons ,Ionicons,MaterialIcons,AntDesign,FontAwesome} from '@expo/vector-icons';
-import React, { useContext, useState } from 'react'
+import React, { useContext, useState } from 'react';
+import { StyleSheet, Text, View, Image, ScrollView, TouchableOpacity, Alert, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import style from '../../globals/style';
-import {useNavigation} from'@react-navigation/native'
-import { LogOut } from '../../Firebase/FirebaseAPI';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete'; // Import Google Places Autocomplete
+import { useNavigation } from '@react-navigation/native';
 import { UserContext } from '../../Firebase/UserContext';
 import { updateProfile } from '../../Firebase/FirebaseAPI';
-import ImageModal from '../../Modal/ImageModal';
 import LoadScreen from '../../component/LoadScreen';
+import ImageModal from '../../Modal/ImageModal';
 import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
+
 const ProfileDetail = () => {
-    const {user} = useContext(UserContext);
+    const { user } = useContext(UserContext);
     const [fullName, setFullName] = useState(user?.fullName || '');
     const [phone, setPhone] = useState(user?.phone || '');
     const [avatar, setAvatar] = useState(user?.avatar || '');
+    const [address, setAddress] = useState(user?.address || ''); // Thêm state cho địa chỉ
     const [modalVisible, setModalVisible] = useState(false);
+    const [loading, setLoading] = useState(false);
+
     const CLOUD_NAME = 'dtqo1fvv9';
     const UPLOAD_PRESET = 'anhfoodapp';
-    const [loading,setLoading] = useState(false);
 
     const onPickCamera = async () =>{
         setModalVisible(false);
@@ -50,8 +51,9 @@ const ProfileDetail = () => {
             )
                 const uploadedUrl = response.data.secure_url;
                 Alert.alert("Upload tad",uploadedUrl)
-                handleUpdate(uploadedUrl)
                 setAvatar(uploadedUrl);
+                handleUpdate(uploadedUrl)
+                
                 setLoading(false);
                 
         }
@@ -62,116 +64,130 @@ const ProfileDetail = () => {
 
     const navigation = useNavigation();
     const handleUpdate = async (avatarUrl = user.avatar) =>{
-        const result = await updateProfile(user.id,{
-            avatar:avatarUrl || [],
-            fullName:fullName,
-            phone:phone
-        })
-        if(result.success){
-            Alert.alert("Thành công", "Thông tin đã được cập nhật.");
+        if (!user) {
+            Alert.alert("Lỗi", "Không tìm thấy thông tin người dùng.");
+            return;
         }
-        else{
+        const result = await updateProfile(user.id, {
+            avatar: avatarUrl || [],
+            fullName: fullName,
+            phone: phone,
+            address: address, // Cập nhật địa chỉ
+        });
+        if (result.success) {
+            Alert.alert("Thành công", "Thông tin đã được cập nhật.");
+        } else {
             Alert.alert("Lỗi", "Không thể cập nhật. Vui lòng thử lại!");
         }
-    }
+    };
+
     if (!user) {
         return (
-          <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <Text>Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.</Text>
-          </SafeAreaView>
+            <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <Text>Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.</Text>
+            </SafeAreaView>
         );
-      }
-  return (
-    <View style={{flex:1}}>
-        <SafeAreaView style={{flex:1}}>
-        <LoadScreen isLoading={loading} text='Chờ một chút.....' />
-        <ScrollView contentContainerStyle={{ flexGrow: 1 ,paddingBottom:100}}>
-            <View style={{flex:1}}>
-            <View style={styles.viewNav}
-            
-            >
-                <TouchableOpacity onPress={()=> navigation.goBack()}>
-                <View style={styles.iconBack}  >
-                    <Ionicons name="arrow-back" size={20} color="black" />
-                </View>
-                </TouchableOpacity>
-            </View>
-            <View style={styles.container}>
-                <TouchableOpacity onPress={() => setModalVisible(true)}>
-                <View style={styles.drawImage}>
-                        <Image source={
-                            avatar? {uri:avatar}: user?.avatar
-                            ? {uri:user.avatar}: require('../../../assets/images/nhanvien01.jpg')
-                        }
-                        style={styles.imageProfile}
-                        />
-                </View>
-                </TouchableOpacity>
-                <View style={styles.profileDetailList}> 
-                
-                <View style={styles.editDetail}>
-                    <View style={styles.itemUser}>
-                    <Text style={styles.textOnInput}>
-                        Họ và tên
-                    </Text>
-                    <TextInput
-                    style={styles.textInput}
-                    value={fullName}
-                    onChangeText={setFullName}
-                    
+    }
 
-                    />
+    return (
+        <View style={{ flex: 1 }}>
+            <SafeAreaView style={{ flex: 1 }}>
+                <LoadScreen isLoading={loading} text="Chờ một chút....." />
+                <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}>
+                    <View style={{ flex: 1 }}>
+                        <View style={styles.viewNav}>
+                            <TouchableOpacity onPress={() => navigation.goBack()}>
+                                <View style={styles.iconBack}>
+                                    <Ionicons name="arrow-back" size={20} color="black" />
+                                </View>
+                            </TouchableOpacity>
+                        </View>
+                        <View style={styles.container}>
+                            <TouchableOpacity onPress={() => setModalVisible(true)}>
+                                <View style={styles.drawImage}>
+                                    <Image
+                                        source={
+                                            typeof avatar === 'string' && avatar.trim() !== ''
+                                                ? { uri: avatar }
+                                                : typeof user?.avatar === 'string' && user.avatar.trim() !== ''
+                                                ? { uri: user.avatar }
+                                                : require('../../../assets/images/nhanvien01.jpg')
+                                        }
+                                        style={styles.imageProfile}
+                                    />
+                                </View>
+                            </TouchableOpacity>
+                            <View style={styles.profileDetailList}>
+                                <View style={styles.editDetail}>
+                                    <View style={styles.itemUser}>
+                                        <Text style={styles.textOnInput}>Họ và tên</Text>
+                                        <TextInput
+                                            style={styles.textInput}
+                                            value={fullName}
+                                            onChangeText={setFullName}
+                                        />
+                                    </View>
+                                    <View style={styles.itemUser}>
+                                        <Text style={styles.textOnInput}>Số điện thoại</Text>
+                                        <TextInput
+                                            style={styles.textInput}
+                                            value={phone}
+                                            onChangeText={setPhone}
+                                        />
+                                    </View>
+                                    <View style={styles.itemUser}>
+                                        <Text style={styles.textOnInput}>Địa chỉ</Text>
+                                        <GooglePlacesAutocomplete
+                                            placeholder="Nhập địa chỉ"
+                                            fetchDetails={true}
+                                            onPress={(data, details = null) => {
+                                                const formattedAddress = details?.formatted_address || data.description;
+                                                setAddress(formattedAddress);
+                                            }}
+                                            query={{
+                                                key: 'YOUR_GOOGLE_MAPS_API_KEY',
+                                                language: 'vi',
+                                            }}
+                                            styles={{
+                                                textInput: styles.textInput,
+                                            }}
+                                        />
+                                    </View>
+                                </View>
+                            </View>
+                        </View>
                     </View>
-                    <View style={styles.itemUser}>
-                    <Text style={styles.textOnInput}>
-                            Số điện thoại
-                        </Text>
-                        <TextInput
-                            style={styles.textInput}
-                            value={phone}
-                            onChangeText={setPhone}
-                        />
+                    <View style={styles.footerButtons}>
+                        <TouchableOpacity style={styles.buttonClose} onPress={() => navigation.goBack()}>
+                            <Text style={styles.textButton}>Đóng</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.buttonUpdate}
+                            onPress={() => {
+                                if (avatar !== user.avatar) {
+                                    uploadImage();
+                                } else {
+                                    handleUpdate(user.avatar);
+                                }
+                            }}
+                        >
+                            <Text style={styles.textButton}>Cập nhật</Text>
+                        </TouchableOpacity>
                     </View>
-                    <View style={styles.itemUser}>
-                        <Text style={styles.textOnInput}>
-                            Địa chỉ
-                        </Text>
-                        <TextInput
-                        style={styles.textInput}
-                        value={user.address}
-                        editable={false}
-                        />
-                    </View>
-                </View>    
+                </ScrollView>
+                <ImageModal
+                    visible={modalVisible}
+                    onClose={() => setModalVisible(false)}
+                    onCamera={onPickCamera}
+                    onLibrary={onPickLibrary}
+                />
+            </SafeAreaView>
+        </View>
+    );
+};
 
-                </View>
-            </View>
-            </View>
-            <View style={styles.footerButtons}>
-                <TouchableOpacity style={styles.buttonClose} onPress={() => navigation.goBack()}>
-                    <Text style={styles.textButton}>Đóng</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={styles.buttonUpdate}
-                    onPress={avatar ? uploadImage : () => handleUpdate(user.avatar)}
-                >
-                    <Text style={styles.textButton}>Cập nhật</Text>
-                </TouchableOpacity>
-            </View>
-            </ScrollView>
-            <ImageModal
-                visible={modalVisible}
-                onClose={() => setModalVisible(false)}
-                onCamera={onPickCamera}
-                onLibrary={onPickLibrary}
-            />
-        </SafeAreaView>
-    </View>
-  )
-}
-
-export default ProfileDetail
+export default ProfileDetail;
 
 const styles = StyleSheet.create({
     container:{
@@ -223,6 +239,10 @@ const styles = StyleSheet.create({
         borderWidth:1,
         color:'black',
         fontSize:16,
+        padding: 10,
+        borderRadius: 5,
+        borderColor: '#ccc',
+        marginTop: 5,
     },
     profileDetailList:{
         backgroundColor:'white',
