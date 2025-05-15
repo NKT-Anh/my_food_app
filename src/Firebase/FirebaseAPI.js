@@ -342,18 +342,23 @@ export const addOrder = async (userId, orderData) => {
 
         if (userDoc.exists()) {
             const userData = userDoc.data();
-            const orders = userData.orders || [];
+            const deliveryAddress = userData.address || " "; 
+
+            // Kiểm tra nếu không có địa chỉ
+            if (!deliveryAddress || deliveryAddress.trim() === "") {
+                return { success: false, message: "Vui lòng cập nhật địa chỉ trước khi đặt hàng!" };
+            }
+
             const newOrder = {
                 ...orderData,
+                deliveryAddress,
                 status: "Chờ xác nhận",
                 createdAt: new Date(),
             };
 
-            orders.push(newOrder);
-
-            await updateDoc(userReference, {
-                orders,
-            });
+            // Lưu đơn hàng vào collection "orders"
+            const orderRef = doc(collection(db, "orders"));
+            await setDoc(orderRef, newOrder);
 
             return { success: true, message: "Đơn hàng đã được thêm vào trạng thái Chờ xác nhận" };
         } else {
@@ -371,24 +376,32 @@ export const checkoutOrders = async (userId, ordersToCheckout) => {
 
         if (userDoc.exists()) {
             const userData = userDoc.data();
+            const deliveryAddress = userData.address || " ";
+            if (!deliveryAddress || deliveryAddress.trim() === "") {
+                return { success: false, message: "Vui lòng cập nhật địa chỉ trước khi thanh toán!" };
+            }
 
-            // Cập nhật trạng thái các đơn hàng
-            const updatedOrders = ordersToCheckout.map((item) => ({
-                ...item,
-                status: "Chờ giao hàng", // Chuyển trạng thái sau khi thanh toán
-                updatedAt: new Date(), // Thời gian cập nhật
-                createdAt: new Date(), // Thời gian tạo đơn hàng
-                userId, // Gắn ID người dùng vào đơn hàng
-            }));
+            // Tạo một đơn hàng mới với tất cả các món
+            const newOrder = {
+                items: ordersToCheckout[0].items.map(item => ({
+                    foodItem: {
+                        foodName: item.foodItem.foodName,
+                        ...item.foodItem
+                    },
+                    soLuong: item.soLuong,
+                    tongGia: item.tongGia
+                })),
+                deliveryAddress,
+                status: "Chờ giao hàng",
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                userId,
+                totalAmount: ordersToCheckout[0].totalAmount
+            };
 
-            // Tạo bản sao đơn hàng trong collection "orders" ở cấp cao nhất
-            const batch = writeBatch(db); // Sử dụng writeBatch để thực hiện nhiều thao tác ghi cùng lúc
-            updatedOrders.forEach((order) => {
-                const orderRef = doc(collection(db, "orders")); // Tạo document mới trong "orders"
-                batch.set(orderRef, order);
-            });
-
-            await batch.commit(); // Thực hiện tất cả các thao tác ghi
+            // Lưu đơn hàng vào collection "orders"
+            const orderRef = doc(collection(db, "orders"));
+            await setDoc(orderRef, newOrder);
 
             // Xóa giỏ hàng của người dùng
             await updateDoc(userReference, {
@@ -416,28 +429,59 @@ export const resetPasswordEmail = async (email) => {
     }
 }
 export const getOverviewStats = async () => {
-    try{
-        const ordersSnapshot = await getDocs(collection(db, "User"));
-        const totalOrders = ordersSnapshot.size;
-        let totalRevenue = 0;
+  try {
+    // Lấy thống kê đơn hàng
+    const ordersQuery = query(collection(db, "orders"));
+    const ordersSnapshot = await getDocs(ordersQuery);
+    
+    let totalOrders = 0;
+    let totalRevenue = 0;
+    let pendingOrders = 0;
+    let readyOrders = 0;
+    let deliveringOrders = 0;
+    let completedOrders = 0;
+    
+    // Khởi tạo mảng thống kê theo ngày
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const dailyStats = Array(31).fill(0); // Mảng lưu số đơn hàng mỗi ngày
+    const dailyRevenue = Array(31).fill(0); // Mảng lưu doanh thu mỗi ngày
+    
     ordersSnapshot.forEach((doc) => {
-      const data = doc.data();
-      if (data.status === "completed") {
-        totalRevenue += data.totalPrice;
+      const orderData = doc.data();
+      totalOrders++;
+      totalRevenue += orderData.totalAmount || 0;
+      
+      // Thống kê theo trạng thái
+      switch (orderData.status) {
+        case "Chờ xác nhận":
+          pendingOrders++;
+          break;
+        case "Chờ giao hàng":
+          readyOrders++;
+          break;
+        case "Đang giao":
+          deliveringOrders++;
+          break;
+        case "Đã đặt":
+          completedOrders++;
+          break;
+      }
+      
+      // Thống kê theo ngày
+      const orderDate = orderData.createdAt?.toDate();
+      if (orderDate && orderDate >= firstDayOfMonth && orderDate <= today) {
+        const dayIndex = orderDate.getDate() - 1;
+        dailyStats[dayIndex]++;
+        dailyRevenue[dayIndex] += orderData.totalAmount || 0;
       }
     });
 
-    // Lấy số lượng người dùng
-    const usersSnapshot = await getDocs(collection(db, "users"));
+    // Lấy tổng số người dùng
+    const usersSnapshot = await getDocs(collection(db, "User"));
     const totalUsers = usersSnapshot.size;
 
-    // Lấy số lượng cửa hàng đang hoạt động
-    const activeRestaurantsSnapshot = await getDocs(
-      query(collection(db, "restaurants"), where("isActive", "==", true))
-    );
-    const activeRestaurants = activeRestaurantsSnapshot.size;
-
-    // Lấy số lượng món ăn
+    // Lấy tổng số món ăn
     const foodsSnapshot = await getDocs(collection(db, "foods"));
     const totalFoods = foodsSnapshot.size;
 
@@ -447,18 +491,20 @@ export const getOverviewStats = async () => {
         totalOrders,
         totalRevenue,
         totalUsers,
-        activeRestaurants,
         totalFoods,
+        pendingOrders,
+        readyOrders,
+        deliveringOrders,
+        completedOrders,
+        dailyStats: dailyStats.slice(0, today.getDate()), // Chỉ lấy đến ngày hiện tại
+        dailyRevenue: dailyRevenue.slice(0, today.getDate()), // Chỉ lấy đến ngày hiện tại
       },
     };
-
-
-    }
-    catch(error){
-        console.error("Lỗi khi lấy thống kê tổng quan:", error.message);
-        return { success: false, error: "Lỗi khi lấy thống kê tổng quan!" };
-    }
-}
+  } catch (error) {
+    console.error("Error getting overview stats:", error);
+    return { success: false, error: error.message };
+  }
+};
 export const getAnalyticsData = async (timeframe) => {
   try {
     const ordersSnapshot = await getDocs(collection(db, "orders"));
@@ -500,7 +546,7 @@ export const loadOrdersRealTime = (userId, setOrders) => {
         if (userId) {
             ordersQuery = query(ordersQuery, where("userId", "==", userId));
         }
-
+        
         const unsubscribe = onSnapshot(ordersQuery, (snapshot) => {
             const ordersData = snapshot.docs.map((doc) => ({
                 id: doc.id,
@@ -514,4 +560,75 @@ export const loadOrdersRealTime = (userId, setOrders) => {
         console.error("Lỗi khi tải đơn hàng theo thời gian thực:", error.message);
         setOrders([]);
     }
+};
+export const updateRestaurantInfo = async (restaurantId, restaurantData) => {
+    if (!restaurantId) {
+        return { success: false, error: 'Không tìm thấy ID nhà hàng!' };
+    }
+
+    try {
+        const restaurantRef = doc(db, 'restaurants', restaurantId);
+        await setDoc(restaurantRef, restaurantData, { merge: true });
+        return { success: true, message: 'Thông tin nhà hàng đã được lưu thành công!' };
+    } catch (error) {
+        console.error('Lỗi khi lưu thông tin nhà hàng:', error.message);
+        return { success: false, error: 'Không thể lưu thông tin nhà hàng. Vui lòng thử lại!' };
+    }
+};
+export const fetchRestaurantInfo = async (userId) => {
+    try {
+        const restaurantRef = doc(db, 'restaurants', userId);
+        const restaurantSnap = await getDoc(restaurantRef);
+
+        if (restaurantSnap.exists()) {
+            const restaurantData = restaurantSnap.data();
+            return { success: true, data: restaurantData };
+        } else {
+            return { success: false, error: 'Không tìm thấy thông tin nhà hàng!' };
+        }
+    } catch (error) {
+        console.error('Lỗi khi kiểm tra nhà hàng:', error.message);
+        return { success: false, error: 'Không thể kiểm tra thông tin nhà hàng. Vui lòng thử lại!' };
+    }
+};
+export const updateOrderStatus = async (orderId, newStatus) => {
+    try {
+        const orderRef = doc(db, "orders", orderId);
+        const orderDoc = await getDoc(orderRef);
+
+        if (!orderDoc.exists()) {
+            return { success: false, message: "Không tìm thấy đơn hàng!" };
+        }
+
+        await updateDoc(orderRef, {
+            status: newStatus,
+            updatedAt: new Date()
+        });
+
+        return { success: true, message: "Cập nhật trạng thái đơn hàng thành công!" };
+    } catch (error) {
+        console.error("Lỗi khi cập nhật trạng thái đơn hàng:", error);
+        return { success: false, message: "Lỗi khi cập nhật trạng thái đơn hàng!" };
+    }
+};
+export const searchFoods = async (searchText) => {
+  try {
+    const foodsRef = collection(db, "foods");
+    const q = query(
+      foodsRef,
+      where("foodName", ">=", searchText),
+      where("foodName", "<=", searchText + "\uf8ff")
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const foods = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    
+    return { success: true, data: foods };
+  } catch (error) {
+    console.error("Error searching foods:", error);
+    return { success: false, error: error.message };
+  }
 };

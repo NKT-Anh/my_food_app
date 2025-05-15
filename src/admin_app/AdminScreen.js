@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import FoodScreen from './FoodScreen';
 import OrderScreen from './OrderScreen';
 import StatisticalScreen from './StatisticalScreen';
+import UpdateRestaurantScreen from './UpdateRestaurantScreen';
 import UserScreen from './UserScreen';
 import { LogOut } from '../Firebase/FirebaseAPI';
 import { UserContext } from '../Firebase/UserContext';
@@ -19,7 +20,8 @@ const menuItem=[
     { key:'2' ,label:'Người dùng'},
     { key: '3', label: 'Món ăn' },
     { key: '4', label: 'Đơn hàng' },
-    { key: '5', label: 'Đăng xuất' },
+     { key: '5', label: 'Cập nhật nhà hàng' },
+    { key: '6', label: 'Đăng xuất' },
 ]
 
 const AdminScreen = () => {
@@ -72,6 +74,8 @@ const AdminScreen = () => {
                 return <FoodScreen/>
             case '4':
                 return <OrderScreen/>
+            case '5':
+                return <UpdateRestaurantScreen />;
             default:
                 return null;
         }
@@ -82,6 +86,7 @@ const AdminScreen = () => {
             case '2': return 'Danh sách người dùng';
             case '3': return 'Danh sách món ăn';
             case '4': return 'Danh sách đơn hàng';
+            case '5': return 'Cập nhật nhà hàng';
             default: return '';
         }
     };
@@ -123,7 +128,7 @@ const AdminScreen = () => {
                             selectedMenu == item.key && styles.menuItemActive
                         ]}
                         onPress={()=>{
-                            if(item.key == '5'){
+                            if(item.key == '6'){
                                 handleLogOut();
                             }
             

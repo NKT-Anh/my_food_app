@@ -1,10 +1,17 @@
 import React, { useEffect, useState } from "react";
-import { StyleSheet, Text, View, ScrollView, ActivityIndicator } from "react-native";
+import { StyleSheet, Text, View, ScrollView, ActivityIndicator, TouchableOpacity } from "react-native";
 import { getOverviewStats } from "../Firebase/FirebaseAPI";
+import { Ionicons } from '@expo/vector-icons';
+import { LineChart } from 'react-native-chart-kit';
+import { Dimensions } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+
+const screenWidth = Dimensions.get('window').width;
 
 const StatisticalScreen = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const navigation = useNavigation();
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -20,46 +27,202 @@ const StatisticalScreen = () => {
     fetchStats();
   }, []);
 
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND'
+    }).format(price);
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FF8C00" />
-        <Text>Đang tải dữ liệu...</Text>
+        <ActivityIndicator size="large" color="#FF6B6B" />
       </View>
     );
   }
 
   if (!stats) {
     return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>Đang chờ cập nhật...</Text>
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>Không thể tải dữ liệu thống kê</Text>
       </View>
     );
   }
 
+  const chartData = {
+    labels: stats.dailyStats.map((_, index) => `${index + 1}`),
+    datasets: [
+      {
+        data: stats.dailyStats,
+        color: (opacity = 1) => `rgba(255, 107, 107, ${opacity})`,
+        strokeWidth: 2
+      }
+    ]
+  };
+
+  const revenueChartData = {
+    labels: stats.dailyRevenue.map((_, index) => `${index + 1}`),
+    datasets: [
+      {
+        data: stats.dailyRevenue.map(revenue => revenue / 1000), // Chuyển đổi sang nghìn VND
+        color: (opacity = 1) => `rgba(46, 204, 113, ${opacity})`,
+        strokeWidth: 2
+      }
+    ]
+  };
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Thống kê tổng quan</Text>
-        <View style={styles.statRow}>
-          <Text style={styles.statLabel}>Tổng số đơn hàng:</Text>
-          <Text style={styles.statValue}>{stats.totalOrders}</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Thống kê đơn hàng</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('OrderScreen')}>
+            <Ionicons name="arrow-forward" size={24} color="#FF6B6B" />
+          </TouchableOpacity>
         </View>
-        <View style={styles.statRow}>
-          <Text style={styles.statLabel}>Tổng doanh thu:</Text>
-          <Text style={styles.statValue}>{stats.totalRevenue} VND</Text>
+        
+        <View style={styles.statsGrid}>
+          <View style={styles.statCard}>
+            <View style={styles.statHeader}>
+              <Ionicons name="cart-outline" size={24} color="#FF6B6B" />
+            </View>
+            <Text style={styles.statValue}>{stats.totalOrders}</Text>
+            <Text style={styles.statLabel}>Tổng đơn hàng</Text>
+          </View>
+
+          <View style={styles.statCard}>
+            <View style={styles.statHeader}>
+              <Ionicons name="cash-outline" size={24} color="#FF6B6B" />
+            </View>
+            <Text style={styles.statValue}>{formatPrice(stats.totalRevenue)}</Text>
+            <Text style={styles.statLabel}>Tổng doanh thu</Text>
+          </View>
         </View>
-        <View style={styles.statRow}>
-          <Text style={styles.statLabel}>Số lượng người dùng:</Text>
-          <Text style={styles.statValue}>{stats.totalUsers}</Text>
+
+        <View style={styles.statusGrid}>
+          <View style={[styles.statusCard, { backgroundColor: '#FFF3E0' }]}>
+            <Text style={styles.statusValue}>{stats.pendingOrders}</Text>
+            <Text style={styles.statusLabel}>Chờ xác nhận</Text>
+          </View>
+          <View style={[styles.statusCard, { backgroundColor: '#E3F2FD' }]}>
+            <Text style={styles.statusValue}>{stats.readyOrders}</Text>
+            <Text style={styles.statusLabel}>Chờ giao hàng</Text>
+          </View>
+          <View style={[styles.statusCard, { backgroundColor: '#E8F5E9' }]}>
+            <Text style={styles.statusValue}>{stats.deliveringOrders}</Text>
+            <Text style={styles.statusLabel}>Đang giao</Text>
+          </View>
+          <View style={[styles.statusCard, { backgroundColor: '#F3E5F5' }]}>
+            <Text style={styles.statusValue}>{stats.completedOrders}</Text>
+            <Text style={styles.statusLabel}>Đã đặt</Text>
+          </View>
         </View>
-        <View style={styles.statRow}>
-          <Text style={styles.statLabel}>Số cửa hàng hoạt động:</Text>
-          <Text style={styles.statValue}>{stats.activeRestaurants}</Text>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Thống kê theo ngày</Text>
+        <View style={styles.chartContainer}>
+          <Text style={styles.chartTitle}>Số lượng đơn hàng</Text>
+          <LineChart
+            data={chartData}
+            width={screenWidth - 40}
+            height={220}
+            chartConfig={{
+              backgroundColor: '#ffffff',
+              backgroundGradientFrom: '#ffffff',
+              backgroundGradientTo: '#ffffff',
+              decimalPlaces: 0,
+              color: (opacity = 1) => `rgba(255, 107, 107, ${opacity})`,
+              labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+              style: {
+                borderRadius: 16,
+              },
+              propsForDots: {
+                r: '3',
+                strokeWidth: '1',
+                stroke: '#FF6B6B'
+              }
+            }}
+            bezier
+            style={styles.chart}
+            withInnerLines={false}
+            withOuterLines={true}
+            withVerticalLines={false}
+            withHorizontalLines={true}
+            withDots={true}
+            withShadow={false}
+            withVerticalLabels={true}
+            withHorizontalLabels={true}
+            yAxisLabel=""
+            yAxisSuffix=""
+            yAxisInterval={1}
+          />
         </View>
-        <View style={styles.statRow}>
-          <Text style={styles.statLabel}>Số món ăn đã thêm:</Text>
-          <Text style={styles.statValue}>{stats.totalFoods}</Text>
+
+        <View style={styles.chartContainer}>
+          <Text style={styles.chartTitle}>Doanh thu (nghìn VND)</Text>
+          <LineChart
+            data={revenueChartData}
+            width={screenWidth - 40}
+            height={220}
+            chartConfig={{
+              backgroundColor: '#ffffff',
+              backgroundGradientFrom: '#ffffff',
+              backgroundGradientTo: '#ffffff',
+              decimalPlaces: 0,
+              color: (opacity = 1) => `rgba(46, 204, 113, ${opacity})`,
+              labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+              style: {
+                borderRadius: 16,
+              },
+              propsForDots: {
+                r: '3',
+                strokeWidth: '1',
+                stroke: '#2ecc71'
+              }
+            }}
+            bezier
+            style={styles.chart}
+            withInnerLines={false}
+            withOuterLines={true}
+            withVerticalLines={false}
+            withHorizontalLines={true}
+            withDots={true}
+            withShadow={false}
+            withVerticalLabels={true}
+            withHorizontalLabels={true}
+            yAxisLabel=""
+            yAxisSuffix=""
+            yAxisInterval={1}
+          />
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Thống kê hệ thống</Text>
+        <View style={styles.statsGrid}>
+          <View style={styles.statCard}>
+            <View style={styles.statHeader}>
+              <Ionicons name="people-outline" size={24} color="#FF6B6B" />
+              <TouchableOpacity onPress={() => navigation.navigate('UserScreen')}>
+                <Ionicons name="arrow-forward" size={24} color="#FF6B6B" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.statValue}>{stats.totalUsers}</Text>
+            <Text style={styles.statLabel}>Người dùng</Text>
+          </View>
+
+          <View style={styles.statCard}>
+            <View style={styles.statHeader}>
+              <Ionicons name="restaurant-outline" size={24} color="#FF6B6B" />
+              <TouchableOpacity onPress={() => navigation.navigate('FoodScreen')}>
+                <Ionicons name="arrow-forward" size={24} color="#FF6B6B" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.statValue}>{stats.totalFoods}</Text>
+            <Text style={styles.statLabel}>Món ăn</Text>
+          </View>
         </View>
       </View>
     </ScrollView>
@@ -81,39 +244,98 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     elevation: 3,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
     color: "#333",
+    marginBottom: 15,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderRadius: 10,
+    padding: 15,
+    marginHorizontal: 5,
+    alignItems: 'center',
+    elevation: 2,
+  },
+  statHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 10,
   },
-  statRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 8,
+  statValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginVertical: 5,
   },
   statLabel: {
-    fontSize: 14,
-    color: "#555",
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
   },
-  statValue: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#000",
+  statusGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  statusCard: {
+    width: '48%',
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 10,
+    alignItems: 'center',
+  },
+  statusValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  statusLabel: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-  emptyContainer: {
+  errorContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-  emptyText: {
+  errorText: {
     fontSize: 16,
-    color: "#999",
-    fontStyle: "italic",
+    color: "#FF6B6B",
+  },
+  chartContainer: {
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  chart: {
+    marginVertical: 8,
+    borderRadius: 16,
+  },
+  chartTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 10,
+    textAlign: 'center',
   },
 });

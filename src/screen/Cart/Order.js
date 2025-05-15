@@ -1,118 +1,115 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { Text, View, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { Text, View, FlatList, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { UserContext } from '../../Firebase/UserContext';
-import { loadOrdersRealTime } from '../../Firebase/FirebaseAPI'; // API để tải đơn hàng theo thời gian thực
+import { loadOrdersRealTime, updateOrderStatus } from '../../Firebase/FirebaseAPI';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
 const Order = ({ navigation }) => {
   const { user } = useContext(UserContext);
-  const [orders, setOrders] = useState([]); // Danh sách đơn hàng
-  const [selectedStatus, setSelectedStatus] = useState('Chờ giao hàng'); // Trạng thái được chọn
-  const statusList = ['Chờ giao hàng', 'Đang giao', 'Đã đặt', 'Đã hủy']; // Các trạng thái đơn hàng
+  const [orders, setOrders] = useState([]);
+  const [selectedStatus, setSelectedStatus] = useState('Chờ giao hàng');
+  const statusList = ['Chờ giao hàng', 'Đang giao', 'Đã đặt', 'Đã hủy'];
 
-  // Tải đơn hàng theo thời gian thực
   useEffect(() => {
     if (user && user.id) {
-        const unsubscribe = loadOrdersRealTime(user.id, (orderData) => {
-            if (orderData) {
-                setOrders(orderData);
-            }
-        });
-        return () => unsubscribe(); // Hủy đăng ký khi component bị unmount
+      const unsubscribe = loadOrdersRealTime(user.id, (orderData) => {
+        if (orderData) {
+          setOrders(orderData);
+        }
+      });
+      return () => unsubscribe();
     }
   }, [user]);
 
-  // Lọc đơn hàng theo trạng thái
-  const getOrdersByStatus = (status) => {
-    return orders.filter((order) => order.status === status);
-  };
-
-  // Hiển thị từng đơn hàng
-  const renderItem = ({ item }) => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.foodName}>{item.foodItem?.foodName || 'Tên món không có'}</Text>
-        <Text style={styles.status}>{item.status || 'Chờ xác nhận'}</Text>
+  const renderOrderItem = ({ item }) => (
+    <View style={styles.orderItem}>
+      <View style={styles.orderHeader}>
+        <Text style={styles.orderDate}>
+          {new Date(item.createdAt?.toDate()).toLocaleDateString('vi-VN')}
+        </Text>
+        <Text style={styles.orderStatus}>{item.status}</Text>
       </View>
-      <View style={styles.cardBody}>
-        <Text style={styles.detailText}>Số lượng: {item.soLuong}</Text>
-        <Text style={styles.detailText}>
-          Tổng: {item.tongGia.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }).replace('₫', 'đ')}
+      
+
+      {item.items && item.items.map((foodItem, index) => (
+        <View key={index} style={styles.foodItem}>
+          <Text style={styles.foodName}>{foodItem.foodItem?.foodName || 'Tên món không có'}</Text>
+          <View style={styles.foodDetails}>
+            <Text style={styles.foodQuantity}>Số lượng: {foodItem.soLuong || 0}</Text>
+            <Text style={styles.foodPrice}>
+              {(foodItem.tongGia || 0).toLocaleString('vi-VN')} đ
+            </Text>
+          </View>
+        </View>
+      ))}
+
+      <View style={styles.orderFooter}>
+        <Text style={styles.totalAmount}>
+          Tổng: {(item.totalAmount || 0).toLocaleString('vi-VN')} đ
+        </Text>
+        <Text style={styles.deliveryAddress}>
+          Địa chỉ: {item.deliveryAddress}
         </Text>
       </View>
     </View>
   );
 
-  // Hiển thị nội dung theo trạng thái
-  const renderContent = () => {
-    const filteredOrders = getOrdersByStatus(selectedStatus);
-
-    if (filteredOrders.length === 0) {
-      return <Text style={styles.emptyText}>Chưa có đơn hàng trong trạng thái này</Text>;
-    }
-
-    return (
-      <FlatList
-        data={filteredOrders}
-        keyExtractor={(item, index) => index.toString()}
-        renderItem={renderItem}
-      />
-    );
-  };
-
   return (
-    <View style={{ flex: 1 }}>
-      <SafeAreaView style={styles.safeArea}>
-        {/* Thanh điều hướng */}
-        <View style={styles.nav}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Icon name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.navTitle}>Đơn hàng</Text>
-        </View>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Icon name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Đơn hàng của tôi</Text>
+      </View>
 
-        {/* Tabs trạng thái */}
-        <View style={styles.statusContainer}>
-          <FlatList
-            data={statusList}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(item) => item}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                onPress={() => setSelectedStatus(item)}
+      <View style={styles.statusContainer}>
+        <FlatList
+          data={statusList}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(item) => item}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              onPress={() => setSelectedStatus(item)}
+              style={[
+                styles.statusTab,
+                selectedStatus === item && styles.activeStatusTab,
+              ]}
+            >
+              <Text
                 style={[
-                  styles.statusTab,
-                  selectedStatus === item && styles.activeStatusTab,
+                  styles.statusTabText,
+                  selectedStatus === item && styles.activeStatusTabText,
                 ]}
               >
-                <Text
-                  style={[
-                    styles.statusTabText,
-                    selectedStatus === item && styles.activeStatusTabText,
-                  ]}
-                >
-                  {item}
-                </Text>
-              </TouchableOpacity>
-            )}
-          />
-        </View>
+                {item}
+              </Text>
+            </TouchableOpacity>
+          )}
+        />
+      </View>
 
-        {/* Nội dung đơn hàng */}
-        <View style={styles.content}>{renderContent()}</View>
-      </SafeAreaView>
-    </View>
+      <FlatList
+        data={orders.filter(order => order.status === selectedStatus)}
+        keyExtractor={(item) => item.id}
+        renderItem={renderOrderItem}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>Không có đơn hàng nào trong trạng thái này</Text>
+        }
+      />
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
     backgroundColor: '#f8f8f8',
   },
-  nav: {
+  header: {
     height: 60,
     flexDirection: 'row',
     alignItems: 'center',
@@ -122,7 +119,7 @@ const styles = StyleSheet.create({
   backButton: {
     marginRight: 10,
   },
-  navTitle: {
+  headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#fff',
@@ -152,44 +149,70 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
   },
-  content: {
-    flex: 1,
-    padding: 15,
-    backgroundColor: '#f8f8f8',
-  },
-  card: {
+  orderItem: {
     backgroundColor: '#fff',
-    borderRadius: 10,
-    marginBottom: 10,
+    margin: 10,
     padding: 15,
+    borderRadius: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  cardHeader: {
+  orderHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 10,
   },
-  foodName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+  orderDate: {
+    fontSize: 14,
+    color: '#666',
   },
-  status: {
+  orderStatus: {
     fontSize: 14,
     fontWeight: '600',
     color: '#007bff',
   },
-  cardBody: {
-    marginBottom: 10,
+  foodItem: {
+    marginVertical: 5,
+    paddingVertical: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
-  detailText: {
+  foodName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+  },
+  foodDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 5,
+  },
+  foodQuantity: {
     fontSize: 14,
-    color: '#555',
+    color: '#666',
+  },
+  foodPrice: {
+    fontSize: 14,
+    color: '#666',
+  },
+  orderFooter: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  totalAmount: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
     marginBottom: 5,
+  },
+  deliveryAddress: {
+    fontSize: 14,
+    color: '#666',
   },
   emptyText: {
     textAlign: 'center',

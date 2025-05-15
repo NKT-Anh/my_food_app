@@ -1,40 +1,44 @@
 import { StyleSheet, Text, TextInput, View,TouchableOpacity,Image,Alert, ScrollView, FlatList  } from 'react-native'
-import React, { useState } from 'react'
+import React, { useState, useContext, useEffect } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import style from '../../globals/style'
 import {AntDesign,EvilIcons,Ionicons } from '@expo/vector-icons';
 import {useNavigation} from '@react-navigation/native'
 import globalStyles from '../../globals/globalStyles';
 import { db } from '../../Firebase/FirebaseConfig';
-import { addDoc,collection,updateDoc  } from 'firebase/firestore';
-import axios from 'axios';
+import { addDoc,collection,updateDoc, doc, getDoc } from 'firebase/firestore';
+import { fetchRestaurantInfo } from '../../Firebase/FirebaseAPI';
+import axios from 'axios';  
 import ImageModal from '../../Modal/ImageModal';
 import LoadScreen from '../../component/LoadScreen';
 
 import * as ImagePicker from 'expo-image-picker';
 import { addTag, defaultTags, removeTag } from '../../component/TagManager';
+import { UserContext } from '../../Firebase/UserContext';
 
 const AddFood = () => {
-
+    const { user } = useContext(UserContext);
     const [foodName,setFoodName] = useState('');
     const [foodPrice,setFoodPrice] = useState('');
     const [foodImage,setFoodImage] = useState(null);
     const [restaurantName,setRestaurantName] = useState('');
     const [restaurantAddress,setRestaurantAddress] = useState('');
     const [restaurantPhone,setRestaurantPhone] = useState('');
-
+    const [description, setDescription] = useState('');
     const [tag, setTag] = useState([]);
     const [tagInput, setTagInput] = useState(''); 
-
-    const [description, setDescription] = useState('');
     const [modalVisible, setModalVisible] = useState(false);
     const CLOUD_NAME = 'dtqo1fvv9';
     const UPLOAD_PRESET = 'anhfoodapp';
-
     const [loading,setLoading] = useState(false);
     const navigation = useNavigation();
 
-    
+    useEffect(() => {
+        if (user && user.id) {
+            fetchRestaurantDetails(user.id); // Gọi API với idUser
+        }
+    }, [user]);
+
     const onPickCamera = async () =>{
         setModalVisible(false);
         const result = await ImagePicker.launchCameraAsync({mediaTypes: ImagePicker.MediaTypeOptions.Images,quality:1});
@@ -67,7 +71,6 @@ const AddFood = () => {
             );
             setLoading(false);
             const uploadedUrl = response.data.secure_url;
-            Alert.alert('Upload thành công!', uploadedUrl);
             saveFood(uploadedUrl);
             setFoodImage(uploadedUrl);
         } catch(error){
@@ -76,36 +79,51 @@ const AddFood = () => {
         }
     
     }
-    const saveFood = async(uri) =>{
-        if (!foodName || !foodPrice || !foodImage || !restaurantName) {
-            Alert.alert("Điền thông tin","Nhập đầy đủ thông tin")
+    const saveFood = async (uri) => {
+        console.log('ID Nhà hàng khi lưu món ăn:', user.id);
+
+        if (!foodName || !foodPrice || !foodImage) {
+            Alert.alert("Điền thông tin", "Nhập đầy đủ thông tin");
             return;
         }
-        
-        try{
+
+        if (!restaurantName || !restaurantAddress || !restaurantPhone) {
+            Alert.alert("Thông báo", "Vui lòng cập nhật thông tin nhà hàng trước khi thêm món ăn.");
+            return;
+        }
+
+        setLoading(true); // Hiển thị trạng thái tải
+
+        try {
             const foodCollection = collection(db, 'foods');
-            const newFoodRef  = await addDoc(foodCollection,{
+            const newFoodRef = await addDoc(foodCollection, {
                 foodName,
                 foodPrice,
                 foodImage: uri,
+                idRestaurant: user.id,
                 restaurantName,
                 restaurantAddress,
                 restaurantPhone,
                 description,
                 tag,
                 createdAt: new Date(),
+            });
 
-            })
             await updateDoc(newFoodRef, {
                 foodId: newFoodRef.id,
-              });
-            
-            Alert.alert('Thành công', 'Đã thêm món ăn vào danh sách.');
-            navigation.goBack();
-        }
-        catch(error){
-            console.log('firebase', error);
+            });
+
+            Alert.alert('Thành công', 'Đã thêm món ăn vào danh sách.', [
+                {
+                    text: 'OK',
+                    onPress: () => navigation.goBack(), // Quay lại màn hình trước đó
+                },
+            ]);
+        } catch (error) {
+            console.error('firebase', error);
             Alert.alert('Thông báo', 'Vui lòng thử lại');
+        } finally {
+            setLoading(false); // Tắt trạng thái tải
         }
     }
     const handAddTag = () => {
@@ -124,135 +142,171 @@ const AddFood = () => {
         const newTag = addTag(tag,selectedTag);
         setTag(newTag);
     }
+    const fetchRestaurantDetails = async (userId) => {
+        try {
+            const result = await fetchRestaurantInfo(userId);
+            if (result.success) {
+                const restaurantData = result.data;
+                setRestaurantName(restaurantData.name);
+                setRestaurantAddress(restaurantData.address);
+                setRestaurantPhone(restaurantData.phone);
+            } else {
+                Alert.alert('Thông báo', result.error);
+                setRestaurantName('');
+                setRestaurantAddress('');
+                setRestaurantPhone('');
+            }
+        } catch (error) {
+            console.error('Lỗi khi lấy thông tin nhà hàng:', error.message);
+            Alert.alert('Lỗi', 'Không thể lấy thông tin nhà hàng. Vui lòng thử lại!');
+        }
+    };
   return (
-    <View style={{flex:1}}>
+    <View style={{ flex: 1 }}>
         <SafeAreaView style={styles.SafeArea}>
-            <LoadScreen isLoading={loading} text='Chờ một chút.....' />
-        <View style={styles.viewBack}>
-                <AntDesign name="back" size={24} color="black"
-                style={styles.iconBack}
-                onPress={()=> navigation.goBack()}
-                />     
+            <LoadScreen isLoading={loading} text="Chờ một chút....." />
+            <View style={styles.viewBack}>
+                <AntDesign
+                    name="back"
+                    size={24}
+                    color="black"
+                    style={styles.iconBack}
+                    onPress={() => navigation.goBack()}
+                />
             </View>
-        <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-            <View style={styles.container}>
-            
-            <View style={{alignItems:'center'}}>
-                <Text style={styles.title} >Thêm món ăn</Text>
-                </View>  
-            <View style={{flex:1, backgroundColor:'white', alignItems: 'center',marginVertical:10}}>
-            <TouchableOpacity onPress={() => setModalVisible(true)}>
-            <View style={{ position: 'relative' }}>
-                <Image
-                source = {foodImage ? {uri: foodImage}: require('../../../assets/images/photoDefault.png')}
-                style={[
-                    styles.image,
-                    ]}
-                />
-                <View style={styles.iconUpload}>
-                <EvilIcons  name="camera" size={40} color="red" />
-                </View>
-            </View>
-            </TouchableOpacity>
-            
-            
-            </View>
-            <View>
-                <TextInput
-                placeholder='Tên món ăn'
-                value={foodName}
-                placeholderTextColor='gray'
-                onChangeText={setFoodName}
-                style={styles.TextInput}
-                />
+            <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+                <View style={styles.container}>
+                    {/* Tiêu đề */}
+                    <View style={{ alignItems: 'center' }}>
+                        <Text style={styles.title}>Thêm món ăn</Text>
+                    </View>
 
-                <TextInput
-                placeholder='Giá (VND)'
-                value={foodPrice}
-                keyboardType='numeric'
-                placeholderTextColor='gray'
-                onChangeText={setFoodPrice}
-                style={styles.TextInput}
-                />
-               
-                <TextInput
-                placeholder='Tên cửa hàng'
-                value={restaurantName}
-                placeholderTextColor='gray'
-                onChangeText={setRestaurantName}
-                style={styles.TextInput}
-                />
-
-                <TextInput
-                placeholder='Địa chỉ'
-                value={restaurantAddress}
-                placeholderTextColor='gray'
-                onChangeText={setRestaurantAddress}
-                style={styles.TextInput}
-                />
-
-                <TextInput
-                placeholder='Số liên lạc'
-                value={restaurantPhone}
-                placeholderTextColor='gray'
-                onChangeText={setRestaurantPhone}
-                style={styles.TextInput}
-                maxLength={10}
-                keyboardType='numeric'
-                />
-
-                <TextInput
-                placeholder='Mô tả'
-                value={description}
-                placeholderTextColor='gray'
-                onChangeText={setDescription}
-                style={styles.TextInput}
-                />
-                <TextInput
-                placeholder='Loại'
-                value={tagInput}
-                placeholderTextColor='gray'
-                onChangeText={setTagInput}
-                style={styles.TextInput}
-                />
-                    <TouchableOpacity style={styles.iconList} onPress={handAddTag}>
-                        <Ionicons name="add-circle-outline" size={30} color="green" />
-                    </TouchableOpacity>
-                    <FlatList
-                    data={tag}
-                    keyExtractor={(item, index) => index.toString()}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    renderItem={({ item }) => (
-                        <View style={styles.selectedTagContainer}>
-                        <Text style={styles.selectedTagText}>{item}</Text>
-                        <TouchableOpacity onPress={() => handRemoveTag(item)}>
-                            <Ionicons name="close-circle" size={18} color="red" style={{ marginLeft: 4 }} />
+                    {/* Hình ảnh món ăn */}
+                    <View style={{ flex: 1, backgroundColor: 'white', alignItems: 'center', marginVertical: 10 }}>
+                        <Text style={styles.sectionTitle}>Hình ảnh món ăn</Text>
+                        <TouchableOpacity onPress={() => setModalVisible(true)}>
+                            <View style={{ position: 'relative' }}>
+                                <Image
+                                    source={foodImage ? { uri: foodImage } : require('../../../assets/images/photoDefault.png')}
+                                    style={styles.image}
+                                />
+                                <View style={styles.iconUpload}>
+                                    <EvilIcons name="camera" size={40} color="red" />
+                                </View>
+                            </View>
                         </TouchableOpacity>
+                    </View>
+
+                    {/* Thông tin món ăn */}
+                    <View>
+                        <Text style={styles.sectionTitle}>Thông tin món ăn</Text>
+                        <TextInput
+                            placeholder="Tên món ăn"
+                            value={foodName}
+                            placeholderTextColor="gray"
+                            onChangeText={setFoodName}
+                            style={styles.TextInput}
+                        />
+                        <TextInput
+                            placeholder="Giá (VND)"
+                            value={foodPrice}
+                            keyboardType="numeric"
+                            placeholderTextColor="gray"
+                            onChangeText={setFoodPrice}
+                            style={styles.TextInput}
+                        />
+                        <TextInput
+                            placeholder="Mô tả"
+                            value={description}
+                            placeholderTextColor="gray"
+                            onChangeText={setDescription}
+                            style={styles.TextInput}
+                        />
+                        <View>
+                            <Text style={styles.sectionTitle}>Loại món ăn</Text>
+                            {/* Nhập tag */}
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginHorizontal: 10 }}>
+                                <TextInput
+                                    placeholder="Nhập loại"
+                                    value={tagInput}
+                                    placeholderTextColor="gray"
+                                    onChangeText={setTagInput}
+                                    style={[styles.TextInput, { flex: 1 }]}
+                                />
+                                <TouchableOpacity onPress={() => {
+                                    const newTags = addTag(tag, tagInput); // Sử dụng hàm addTag
+                                    setTag(newTags);
+                                    setTagInput('');
+                                }} style={{ marginLeft: 10 }}>
+                                    <Ionicons name="add-circle-outline" size={30} color="green" />
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Danh sách tag đã chọn */}
+                            <FlatList
+                                data={tag}
+                                keyExtractor={(item, index) => index.toString()}
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                renderItem={({ item }) => (
+                                    <View style={styles.selectedTagContainer}>
+                                        <Text style={styles.selectedTagText}>{item}</Text>
+                                        <TouchableOpacity onPress={() => handRemoveTag(item)}>
+                                            <Ionicons name="close-circle" size={18} color="red" style={{ marginLeft: 4 }} />
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                            />
+
+                            {/* Danh sách tag gợi ý */}
+                            <Text style={styles.sectionTitle}>Gợi ý loại món ăn</Text>
+                            <FlatList
+                                data={defaultTags}
+                                keyExtractor={(item, index) => index.toString()}
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                renderItem={({ item }) => (
+                                    <TouchableOpacity onPress={() => handSelectedTag(item)} style={styles.suggestedTagContainer}>
+                                        <Text style={styles.suggestedTagText}>{item}</Text>
+                                    </TouchableOpacity>
+                                )}
+                            />
                         </View>
-                    )}
-                    />
-                    <FlatList
-                    data={defaultTags}
-                    keyExtractor={(item, index) => index.toString()}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    renderItem={({ item }) => (
-                        <TouchableOpacity style={styles.suggestedTagContainer} onPress={() => handSelectedTag(item)}>
-                        <Text style={styles.suggestedTagText}>{item}</Text>
-                        </TouchableOpacity>
-                    )}
-                    />
-                
-                
-            </View>
-            <View style={styles.endView}>
-                <TouchableOpacity style={styles.icon} onPress={uploadImage}>
-                    <Ionicons name="save-outline" size={30} color="green" />
-                </TouchableOpacity>
-            </View>
-            </View>
+                    </View>
 
+                    {/* Thông tin nhà hàng */}
+                    <View>
+                        <Text style={styles.sectionTitle}>Thông tin nhà hàng</Text>
+                        <TextInput
+                            placeholder="Tên cửa hàng"
+                            value={restaurantName}
+                            placeholderTextColor="gray"
+                            editable={false}
+                            style={styles.TextInput}
+                        />
+                        <TextInput
+                            placeholder="Địa chỉ"
+                            value={restaurantAddress}
+                            placeholderTextColor="gray"
+                            editable={false}
+                            style={styles.TextInput}
+                        />
+                        <TextInput
+                            placeholder="Số liên lạc"
+                            value={restaurantPhone}
+                            placeholderTextColor="gray"
+                            editable={false}
+                            style={styles.TextInput}
+                        />
+                    </View>
+
+                    {/* Nút lưu */}
+                    <View style={styles.endView}>
+                        <TouchableOpacity style={styles.icon} onPress={uploadImage}>
+                            <Ionicons name="save-outline" size={30} color="green" />
+                        </TouchableOpacity>
+                    </View>
+                </View>
             </ScrollView>
             <ImageModal
                 visible={modalVisible}
@@ -261,7 +315,6 @@ const AddFood = () => {
                 onLibrary={onPickLibrary}
             />
         </SafeAreaView>
-      
     </View>
     
   )
@@ -386,4 +439,11 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#c2185b',
       },
+      sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginVertical: 10,
+    marginLeft: 10,
+},
 })

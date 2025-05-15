@@ -29,9 +29,9 @@ const Cart = ({ navigation }) => {
         <Text style={styles.status}>{item.status || 'Chờ xác nhận'}</Text>
       </View>
       <View style={styles.cardBody}>
-        <Text style={styles.detailText}>Số lượng: {item.soLuong}</Text>
+        <Text style={styles.detailText}>Số lượng: {item.soLuong || 0}</Text>
         <Text style={styles.detailText}>
-          Tổng: {item.tongGia.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }).replace('₫', 'đ')}
+          Tổng: {(item.tongGia || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }).replace('₫', 'đ')}
         </Text>
       </View>
     </View>
@@ -39,8 +39,8 @@ const Cart = ({ navigation }) => {
 
   const calculateTotal = () => {
     const total = cart
-      .filter((item) => item.status === selectedStatus)
-      .reduce((sum, item) => sum + item.tongGia, 0);
+      .filter((item) => !item.status || item.status === 'Chờ xác nhận')
+      .reduce((sum, item) => sum + (item.tongGia || 0), 0);
     return total.toLocaleString('vi-VN') + ' đ';
   };
 
@@ -63,9 +63,11 @@ const Cart = ({ navigation }) => {
           keyExtractor={(item, index) => index.toString()}
           renderItem={renderItem}
         />
-        <View style={styles.totalContainer}>
-          <Text style={styles.totalText}>Tổng: {calculateTotal()} VND</Text>
-        </View>
+        {selectedStatus === 'Chờ xác nhận' && (
+          <View style={styles.totalContainer}>
+            <Text style={styles.totalText}>Tổng: {calculateTotal()}</Text>
+          </View>
+        )}
       </>
     );
   };
@@ -76,7 +78,6 @@ const Cart = ({ navigation }) => {
         return;
     }
 
-    // Lọc các đơn hàng trong trạng thái "Chờ xác nhận" hoặc trạng thái rỗng
     const ordersToCheckout = cart.filter(
         (item) => !item.status || item.status === 'Chờ xác nhận'
     );
@@ -87,13 +88,29 @@ const Cart = ({ navigation }) => {
     }
 
     try {
-        // Gọi API để xử lý thanh toán
-        const result = await checkoutOrders(user.id, ordersToCheckout);
+
+        const groupedOrder = {
+            items: ordersToCheckout.map(item => ({
+                foodItem: {
+                    foodName: item.foodItem?.foodName || 'Tên món không có',
+                    ...item.foodItem
+                },
+                soLuong: item.soLuong || 0,
+                tongGia: item.tongGia || 0
+            })),
+            totalAmount: ordersToCheckout.reduce((sum, item) => sum + (item.tongGia || 0), 0),
+            createdAt: new Date(),
+            status: 'Chờ giao hàng',
+            userId: user.id
+        };
+
+
+        const result = await checkoutOrders(user.id, [groupedOrder]);
 
         if (result.success) {
             alert(result.message);
 
-            // Tải lại giỏ hàng từ Firestore
+
             loadCartRealTime(user.id, (cartData) => {
                 if (cartData) {
                     setCart(cartData);
@@ -272,7 +289,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
-  },
+  }
 });
 
 export default Cart;

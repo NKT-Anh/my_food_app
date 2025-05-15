@@ -13,7 +13,7 @@ const tagData = [
     id:'3' ,name: 'Gà lướng', Image: require('../../assets/images/Tag/tagData3.jpg')
   },
   {
-    id:'4' ,name: 'Cafe chồn lùi', Image: require('../../assets/images/Tag/tagData4.jpg')
+    id:'4' ,name: 'Cafe chồn', Image: require('../../assets/images/Tag/tagData4.jpg')
   },
 ]
 
