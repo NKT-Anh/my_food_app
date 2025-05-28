@@ -8,7 +8,7 @@ const tags = [
     { id: 'Home', name: 'Trang chủ', iconName: 'home-outline' ,iconSetName:'home'},
     { id: 'Favorites', name: 'Thẻ', iconName: 'bookmark-outline', iconSetName:'bookmark' },
     { id: 'Profile', name: 'Tôi', iconName: 'person-outline',iconSetName: 'person' },
-    { id: 'SearchScreen', name: 'Thông báo', iconName: 'notifications-outline',iconSetName:'notifications' },
+    { id: 'ChatBotScreen', name: 'Thông báo', iconName: 'notifications-outline',iconSetName:'notifications' },
   ];
 const BottomNavigation = () => {
     

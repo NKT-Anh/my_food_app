@@ -19,10 +19,13 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { MaterialIcons, Feather, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import Style from '../globals/style';
 import TagComponent from '../component/TagComponent';
-import { addToCart, loadFoodHome, removeFavoritesFood } from '../Firebase/FirebaseAPI';
+import { addToCart, loadFoodHome, removeFavoritesFood, addFavoritesFood, loadFavoritesFood } from '../Firebase/FirebaseAPI';
 import Loading from '../component/Loading';
 import FoodItem from './FoodItem';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc, updateDoc, arrayRemove, arrayUnion, setDoc } from 'firebase/firestore';
+import { db } from '../Firebase/FirebaseConfig';
+import { useFavorites } from '../Firebase/FavoritesContext';
 
 const { width } = Dimensions.get('window');
 
@@ -51,6 +54,9 @@ const HomeScreen = () => {
     const [selectedFood, setSelectedFood] = useState(null);
     const [modalVisible, setModalVisible] = useState(false);
     const [favoriteItems, setFavoriteItems] = useState([]);
+    const [user, setUser] = useState(null);
+    const { favorites, updateFavorites } = useFavorites();
+
     const openModal = (foodItem) => {
       if (foodItem !== selectedFood){
          setSelectedFood(foodItem);
@@ -63,30 +69,45 @@ const HomeScreen = () => {
     }
 
     const handleAddToFavorites = async (foodId) => {
-      if (!userId) {
-        Alert.alert("Lỗi", "Vui lòng đăng nhập để thêm vào danh sách yêu thích.");
-        return;
-      }
-      if(favoriteItems.includes(foodId)){
-        const result  =  await removeFavoritesFood(userId,foodId);
-        if (result.success) {
-          Alert.alert("Đã xóa món ăn khỏi danh sách yêu thích", result.message);
-          setFavoriteItems(favoriteItems.filter(item => item !== foodId));
-        } else {
-          Alert.alert("Lỗi", result.message);
-        }
-
-      }
-      else{
-        const result = await addToFavoritesFood(userId, foodId);
-        if (result.success) {
-          Alert.alert("Đã thêm món ăn vào danh sách yêu thích", result.message);
-          setFavoriteItems([...favoriteItems, foodId]);
-        } else {
-          Alert.alert("Lỗi", result.message);
-        }
+      if (!user?.uid) {
+        navigation.navigate('LogIn')
+        return
       }
 
+      try {
+        const userRef = doc(db, 'User', user.uid)
+        const userDoc = await getDoc(userRef)
+
+        if (userDoc.exists()) {
+          const currentFavorites = userDoc.data().favorites || []
+          const isFavorite = currentFavorites.includes(foodId)
+
+          if (isFavorite) {
+            await removeFavoritesFood(user.uid, foodId)
+            const newFavorites = favoriteItems.filter(id => id !== foodId);
+            setFavoriteItems(newFavorites);
+            updateFavorites(newFavorites);
+            console.log('Removed from favorites:', foodId);
+            console.log('New favorites:', newFavorites);
+          } else {
+            await addFavoritesFood(user.uid, foodId)
+            const newFavorites = [...favoriteItems, foodId];
+            setFavoriteItems(newFavorites);
+            updateFavorites(newFavorites);
+            console.log('Added to favorites:', foodId);
+            console.log('New favorites:', newFavorites);
+          }
+        } else {
+          await addFavoritesFood(user.uid, foodId)
+          const newFavorites = [foodId];
+          setFavoriteItems(newFavorites);
+          updateFavorites(newFavorites);
+          console.log('Added to favorites (new user):', foodId);
+          console.log('New favorites:', newFavorites);
+        }
+      } catch (error) {
+        console.error("Error handling favorite:", error)
+      }
     }
 
 
@@ -139,26 +160,39 @@ const HomeScreen = () => {
       }
     };
 
-    useEffect(() =>{
+    useEffect(() => {
       const auth = getAuth();
-      const un = onAuthStateChanged(auth,(user) =>{
-        if(user){
+      const un = onAuthStateChanged(auth, async (user) => {
+        if (user) {
           console.log("Đã đăng nhập, userID:", user.uid);
           if (user.uid !== userId) {
             setUserId(user.uid);
-         }
-        }
-        else{
+            setUser(user);
+            try {
+              const favoritesData = await loadFavoritesFood(user.uid);
+              setFavoriteItems(favoritesData);
+              updateFavorites(favoritesData);
+              console.log('Initial favorites loaded:', favoritesData);
+            } catch (error) {
+              console.error("Error loading favorites:", error);
+            }
+          }
+        } else {
           console.log("Chưa đăng nhập");
-        navigation.navigate('LogIn');
+          navigation.navigate('LogIn');
         }
-      })
+      });
       return () => un();
-    },[navigation])
+    }, [navigation]);
+
+    // Add effect to monitor favorites changes
+    useEffect(() => {
+      console.log('Favorites context updated:', favorites);
+    }, [favorites]);
+
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        {/* Header Section */}
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <View style={styles.locationContainer}>
@@ -185,7 +219,6 @@ const HomeScreen = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Categories Section */}
         <View style={styles.categoriesContainer}>
           <FlatList
             horizontal
@@ -217,7 +250,6 @@ const HomeScreen = () => {
           />
         </View>
 
-        {/* Content Section */}
         <View style={styles.content}>
           <ScrollView 
             showsVerticalScrollIndicator={false}
@@ -272,7 +304,7 @@ const HomeScreen = () => {
                         <MaterialIcons
                           name="favorite"
                           size={24}
-                          color={favoriteItems.includes(item.id) ? '#ff5a00' : '#ccc'}
+                          color={favorites.includes(item.id) ? Style.colors.cam : '#ccc'}
                         />
                       </TouchableOpacity>
                     </TouchableOpacity>

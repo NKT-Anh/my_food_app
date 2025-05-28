@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { loadOrdersRealTime, updateOrderStatus } from '../Firebase/FirebaseAPI';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -60,6 +60,11 @@ const HomeShipper = ({ navigation }) => {
     }
   };
 
+  const openDeliveryLocation = (address) => {
+    const url = `https://maps.google.com/?q=${encodeURIComponent(address)}`;
+    Linking.openURL(url);
+  };
+
   const renderOrderItem = ({ item }) => (
     <View style={styles.orderCard}>
       <View style={styles.orderHeader}>
@@ -67,7 +72,12 @@ const HomeShipper = ({ navigation }) => {
           <Text style={styles.orderTime}>
             {formatTime(item.createdAt?.toDate())} - {formatDate(item.createdAt?.toDate())}
           </Text>
-          <Text style={styles.orderStatus}>{item.status}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={styles.orderStatus}>{item.status}</Text>
+            {item.paymentMethod && (
+              <Text style={styles.paymentMethodText}>({item.paymentMethod})</Text>
+            )}
+          </View>
         </View>
         <Text style={styles.orderTotal}>
           Tổng: {(item.totalAmount || 0).toLocaleString('vi-VN')} đ
@@ -88,9 +98,19 @@ const HomeShipper = ({ navigation }) => {
       ))}
 
       <View style={styles.deliveryInfo}>
-        <Text style={styles.deliveryAddress}>
-          <Ionicons name="location" size={16} color="#666" /> {item.deliveryAddress}
-        </Text>
+        {item.status === 'Đang giao' && item.deliveryAddress ? (
+          <TouchableOpacity onPress={() => openDeliveryLocation(item.deliveryAddress)} style={styles.deliveryAddressContainer}>
+            <Text style={styles.deliveryAddress}>
+              <Ionicons name="location" size={16} color="#666" /> {item.deliveryAddress}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.deliveryAddressContainer}>
+            <Text style={styles.deliveryAddress}>
+              <Ionicons name="location" size={16} color="#666" /> {item.deliveryAddress || 'Chưa có địa chỉ'}
+            </Text>
+          </View>
+        )}
       </View>
 
       {item.status === 'Chờ giao hàng' && (
@@ -255,6 +275,10 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#eee',
   },
+  deliveryAddressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   deliveryAddress: {
     fontSize: 14,
     color: '#666',
@@ -288,6 +312,14 @@ const styles = StyleSheet.create({
     marginTop: 20,
     fontSize: 16,
     color: '#888',
+  },
+  paymentMethodText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 5,
+  },
+  mapButton: {
+    padding: 5,
   },
 });
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { Text, View, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { Text, View, FlatList, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { UserContext } from '../../Firebase/UserContext';
-import { loadCartRealTime, updateOrderStatus, checkoutOrders } from '../../Firebase/FirebaseAPI';
+import { loadCartRealTime, updateOrderStatus, checkoutOrders, removeFoodFromCart, updateCartItemQuantity } from '../../Firebase/FirebaseAPI';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 
@@ -10,6 +10,7 @@ const Cart = ({ navigation }) => {
   const [cart, setCart] = useState([]);
   const [selectedStatus, setSelectedStatus] = useState('Chờ xác nhận');
   const statusList = ['Chờ xác nhận', 'Chờ giao hàng', 'Đang giao', 'Đã đặt'];
+  const [paymentMethod, setPaymentMethod] = useState('Trả sau');
 
   useEffect(() => {
     if (user && user.id) {
@@ -18,7 +19,9 @@ const Cart = ({ navigation }) => {
           setCart(cartData);
         }
       });
-      return unsubscribeUser;
+        return () => {
+          unsubscribeUser();
+        };
     }
   }, [user]);
 
@@ -26,10 +29,42 @@ const Cart = ({ navigation }) => {
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <Text style={styles.foodName}>{item.foodItem?.foodName || 'Tên món không có'}</Text>
-        <Text style={styles.status}>{item.status || 'Chờ xác nhận'}</Text>
+        <View style={styles.cardHeaderRight}>
+          <Text style={styles.status}>{item.status || 'Chờ xác nhận'}</Text>
+          {selectedStatus === 'Chờ xác nhận' && (
+            <TouchableOpacity
+              onPress={() => {
+                Alert.alert(
+                  "Xác nhận xóa",
+                  "Bạn có chắc chắn muốn xóa món ăn này khỏi giỏ hàng?",
+                  [
+                    { text: "Hủy", style: "cancel" },
+                    { text: "Xóa", onPress: () => handleRemoveItem(item.foodItem?.foodId) }
+                  ],
+                  { cancelable: true }
+                );
+              }}
+              style={styles.removeButton}>
+              <Icon name="trash-outline" size={20} color="red" />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
       <View style={styles.cardBody}>
-        <Text style={styles.detailText}>Số lượng: {item.soLuong || 0}</Text>
+        <View style={styles.quantityContainer}>
+          <Text style={styles.detailText}>Số lượng:</Text>
+          {selectedStatus === 'Chờ xác nhận' && (
+            <TouchableOpacity onPress={() => handleUpdateQuantity(item.foodItem?.foodId, (item.soLuong || 0) - 1)} style={styles.quantityButton}>
+              <Icon name="remove-circle-outline" size={24} color="#007bff" />
+            </TouchableOpacity>
+          )}
+          <Text style={styles.quantityText}>{item.soLuong || 0}</Text>
+          {selectedStatus === 'Chờ xác nhận' && (
+            <TouchableOpacity onPress={() => handleUpdateQuantity(item.foodItem?.foodId, (item.soLuong || 0) + 1)} style={styles.quantityButton}>
+              <Icon name="add-circle-outline" size={24} color="#007bff" />
+            </TouchableOpacity>
+          )}
+        </View>
         <Text style={styles.detailText}>
           Tổng: {(item.tongGia || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }).replace('₫', 'đ')}
         </Text>
@@ -72,6 +107,62 @@ const Cart = ({ navigation }) => {
     );
   };
 
+  const handleRemoveItem = async (foodId) => {
+    if (!user || !user.id) {
+      alert("Vui lòng đăng nhập để xóa món!");
+      return;
+    }
+    if (!foodId) {
+      alert("Không tìm thấy ID món ăn để xóa.");
+      return;
+    }
+    try {
+      const result = await removeFoodFromCart(user.id, foodId);
+      if (result.success) {
+        alert(result.message);
+      } else {
+        alert(result.message || "Không thể xóa món ăn khỏi giỏ hàng");
+      }
+    } catch (error) {
+      console.error("Lỗi khi xóa món ăn khỏi giỏ hàng:", error);
+      alert("Đã xảy ra lỗi khi xóa món ăn khỏi giỏ hàng!");
+    }
+  };
+
+  const handleUpdateQuantity = async (foodId, newQuantity) => {
+    if (!user || !user.id) {
+      alert("Vui lòng đăng nhập để cập nhật số lượng!");
+      return;
+    }
+    if (!foodId) {
+      alert("Không tìm thấy ID món ăn để cập nhật.");
+      return;
+    }
+    if (newQuantity < 1) {
+      // Nếu số lượng mới là 0 hoặc âm, hỏi xác nhận xóa
+      Alert.alert(
+        "Xác nhận xóa",
+        "Bạn có muốn xóa món ăn này khỏi giỏ hàng không?",
+        [
+          { text: "Hủy", style: "cancel" },
+          { text: "Xóa", onPress: () => handleRemoveItem(foodId) }
+        ],
+        { cancelable: true }
+      );
+      return;
+    }
+    try {
+      const result = await updateCartItemQuantity(user.id, foodId, newQuantity);
+      if (!result.success) {
+        alert(result.message || "Không thể cập nhật số lượng món ăn.");
+      }
+      // loadCartRealTime sẽ tự cập nhật UI
+    } catch (error) {
+      console.error("Lỗi khi cập nhật số lượng:", error);
+      alert("Đã xảy ra lỗi khi cập nhật số lượng!");
+    }
+  };
+
   const handleCheckout = async () => {
     if (!user || !user.id) {
         alert("Vui lòng đăng nhập để tiếp tục!");
@@ -91,7 +182,7 @@ const Cart = ({ navigation }) => {
 
         const groupedOrder = {
             items: ordersToCheckout.map(item => ({
-                foodItem: {
+                foodItem: { 
                     foodName: item.foodItem?.foodName || 'Tên món không có',
                     ...item.foodItem
                 },
@@ -100,12 +191,13 @@ const Cart = ({ navigation }) => {
             })),
             totalAmount: ordersToCheckout.reduce((sum, item) => sum + (item.tongGia || 0), 0),
             createdAt: new Date(),
+            
             status: 'Chờ giao hàng',
             userId: user.id
         };
 
 
-        const result = await checkoutOrders(user.id, [groupedOrder]);
+        const result = await checkoutOrders(user.id, [groupedOrder],paymentMethod);
 
         if (result.success) {
             alert(result.message);
@@ -126,7 +218,7 @@ const Cart = ({ navigation }) => {
 };
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1 }}>  
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.nav}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -161,9 +253,31 @@ const Cart = ({ navigation }) => {
           />
         </View>
         <View style={styles.content}>{renderContent()}</View>
+        <View style={{ marginHorizontal: 15, marginBottom: 10 }}>
+        <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 5 }}>Phương thức thanh toán</Text>
+          <View style={{ flexDirection: 'row' }}>
+            {['Trả trước', 'Trả sau'].map((method) => (
+              <TouchableOpacity
+                key={method}
+                style={[
+                  styles.paymentOption,
+                  paymentMethod === method && styles.selectedPaymentOption,
+                ]}
+                onPress={() => setPaymentMethod(method)}
+              >
+                <View style={styles.radioCircle}>
+                  {paymentMethod === method && <View style={styles.selectedRadio} />}
+                </View>
+                <Text style={styles.paymentOptionText}>{method}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+      </View>
         {selectedStatus === 'Chờ xác nhận' && (
+          
           <TouchableOpacity style={styles.checkoutButton} onPress={handleCheckout}>
             <Text style={styles.checkoutButtonText}>Thanh toán tất cả</Text>
+            
           </TouchableOpacity>
         )}
       </SafeAreaView>
@@ -242,6 +356,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
   },
+  cardHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   status: {
     fontSize: 14,
     fontWeight: '600',
@@ -289,7 +407,56 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
-  }
+  },
+  paymentOption: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingVertical: 10,
+  paddingHorizontal: 15,
+  borderRadius: 10,
+  borderWidth: 1,
+  borderColor: '#ccc',
+  marginRight: 10,
+  backgroundColor: '#fff',
+  },
+  selectedPaymentOption: {
+    borderColor: '#007bff',
+    backgroundColor: '#e6f0ff',
+  },
+  radioCircle: {
+    height: 20,
+    width: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#007bff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  selectedRadio: {
+    height: 10,
+    width: 10,
+    borderRadius: 5,
+    backgroundColor: '#007bff',
+  },
+  paymentOptionText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  removeButton: {
+    padding: 5,
+  },
+  quantityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  quantityButton: {
+    padding: 5,
+  },
+  quantityText: {
+    marginHorizontal: 10,
+  },
 });
 
 export default Cart;

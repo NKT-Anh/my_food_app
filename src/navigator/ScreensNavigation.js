@@ -14,7 +14,7 @@ import UserScreen from '../admin_app/UserScreen';
 import AddFood from '../admin_app/Food/AddFood';
 import CartScreen from '../screen/CartScreen';
 import Profile from '../screen/profile/Profile';
-
+import ChangePassword from '../screen/profile/ChangePassword';
 import ProfileDetail from '../screen/profile/ProfileDetail';
 import FoodItem from '../screen/FoodItem';
 import Cart from '../screen/Cart/Cart';
@@ -27,6 +27,9 @@ import Order from '../screen/Cart/Order';
 import HomeShipper from '../Shipper/HomeShipper';
 import UpdateRestaurantScreen from '../admin_app/UpdateRestaurantScreen';
 import SearchScreen from '../screen/SearchScreen';
+import VNPayScreen from '../screen/payment/VNPayScreen';
+import ChatBotScreen from '../screen/ChatBotScreen';
+import FavoritesScreen from '../screen/Favorites/FavoritesScreen';
 const Stack = createNativeStackNavigator();
 
 
@@ -45,6 +48,7 @@ const ScreensNavigation = () => {
         
 
         <Stack.Screen name="AdminHome" component={AdminScreen}/>
+         <Stack.Screen name="ChatBotScreen" component={ChatBotScreen}/>
         <Stack.Screen name="FoodScreen" component={FoodScreen}/>
         <Stack.Screen name="OrderScreen" component={OrderScreen}/>
         <Stack.Screen name="StatisticalScreen" component={StatisticalScreen}/>
@@ -55,9 +59,11 @@ const ScreensNavigation = () => {
         <Stack.Screen name="ForgetPassword" component={ForgetPassword}/>
         <Stack.Screen name="Profile" component={Profile}/>
         <Stack.Screen name="ProfileDetail" component={ProfileDetail}/>
+        <Stack.Screen name="ChangePassword" component={ChangePassword}/>
 
         <Stack.Screen name="SearchScreen" component={SearchScreen}/>
         <Stack.Screen name="CartScreen" component={CartScreen} options={{ title: 'Giỏ Hàng' }} />
+        <Stack.Screen name="VNPayScreen" component={VNPayScreen} options={{ title: 'VN pay' }} />
         
         <Stack.Screen name="AddFood" component={AddFood}/>
         <Stack.Screen name="FoodItem" component={FoodItem}/>

@@ -29,7 +29,12 @@ const Order = ({ navigation }) => {
         <Text style={styles.orderDate}>
           {new Date(item.createdAt?.toDate()).toLocaleDateString('vi-VN')}
         </Text>
-        <Text style={styles.orderStatus}>{item.status}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Text style={styles.orderStatus}>{item.status}</Text>
+          {item.paymentMethod && (
+            <Text style={styles.paymentMethodText}>({item.paymentMethod})</Text>
+          )}
+        </View>
       </View>
       
 
@@ -53,8 +58,41 @@ const Order = ({ navigation }) => {
           Địa chỉ: {item.deliveryAddress}
         </Text>
       </View>
+
+      {item.status === 'Chờ giao hàng' && (
+        <TouchableOpacity
+          style={styles.cancelButton}
+          onPress={() => {
+            Alert.alert(
+              "Xác nhận hủy đơn",
+              "Bạn có chắc chắn muốn hủy đơn hàng này không?",
+              [
+                { text: "Không", style: "cancel" },
+                { text: "Có", onPress: () => handleCancelOrder(item.id) }
+              ],
+              { cancelable: true }
+            );
+          }}
+        >
+          <Text style={styles.cancelButtonText}>Hủy đơn</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
+
+  const handleCancelOrder = async (orderId) => {
+    try {
+      const result = await updateOrderStatus(orderId, 'Đã hủy');
+      if (result.success) {
+        Alert.alert("Thành công", result.message);
+      } else {
+        Alert.alert("Lỗi", result.message || "Không thể hủy đơn hàng");
+      }
+    } catch (error) {
+      console.error("Lỗi khi hủy đơn hàng:", error);
+      Alert.alert("Lỗi", "Đã xảy ra lỗi khi hủy đơn hàng!");
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -174,6 +212,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#007bff',
   },
+  paymentMethodText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 5,
+  },
   foodItem: {
     marginVertical: 5,
     paddingVertical: 5,
@@ -219,6 +262,18 @@ const styles = StyleSheet.create({
     marginTop: 20,
     fontSize: 16,
     color: '#888',
+  },
+  cancelButton: {
+    backgroundColor: '#ff3b30',
+    padding: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  cancelButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

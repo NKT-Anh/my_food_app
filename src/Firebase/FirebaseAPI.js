@@ -1,4 +1,4 @@
-import { collection,onSnapshot, where,query,getDocs, setDoc,doc,getDoc, deleteDoc, updateDoc, arrayUnion, writeBatch } from "firebase/firestore";
+import { collection,onSnapshot, where,query,getDocs,addDoc,Timestamp, setDoc,doc,getDoc, deleteDoc, updateDoc, arrayUnion, writeBatch, arrayRemove } from "firebase/firestore";
 import { db,auth} from "./FirebaseConfig";
 import {getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,sendPasswordResetEmail  } from "firebase/auth";
 import { useContext, useId, useRef } from "react";
@@ -294,10 +294,18 @@ export const removeFoodFromCart = async (userId, foodId) => {
 }
 export const addFavoritesFood = async (userId, foodId) => {
     try {
-        const userReference = doc(db, "User", userId);
-        await updateDoc(userReference, {
-            favorites: arrayUnion(foodId),
-        });
+        const userRef = doc(db, "User", userId);
+        const userDoc = await getDoc(userRef);
+
+        if (userDoc.exists()) {
+            await updateDoc(userRef, {
+                favorites: arrayUnion(foodId),
+            });
+        } else {
+            await setDoc(userRef, {
+                favorites: [foodId],
+            });
+        }
         return { success: true, message: "Đã thêm món ăn vào danh sách yêu thích" };
     } catch (error) {
         console.error("Lỗi khi thêm món ăn vào danh sách yêu thích:", error.message);
@@ -306,33 +314,37 @@ export const addFavoritesFood = async (userId, foodId) => {
 }
 export const removeFavoritesFood = async (userId, foodId) => {
     try {
-        const userReference = doc(db, "User", userId);
-        await updateDoc(userReference, {
-            favorites: arrayRemove(foodId),
-        });
+        const userRef = doc(db, "User", userId);
+        const userDoc = await getDoc(userRef);
+
+        if (userDoc.exists()) {
+            await updateDoc(userRef, {
+                favorites: arrayRemove(foodId),
+            });
+        }
         return { success: true, message: "Đã xóa món ăn khỏi danh sách yêu thích" };
     } catch (error) {
         console.error("Lỗi khi xóa món ăn khỏi danh sách yêu thích:", error.message);
         return { success: false, message: "Lỗi khi xóa món ăn khỏi danh sách yêu thích!" };
     }
 }
-export const loadFavoritesFood = async (userId, setFavorites) => {
-    try {
-        const userReference = doc(db, "User", userId);
-        const unsubscribe = onSnapshot(userReference, (userDoc) => {
-            if (userDoc.exists()) {
-                const userData = userDoc.data();
-                const favorites = userData.favorites || [];
-                setFavorites(favorites);
-            } else {
-                setFavorites([]);
-            }
-        });
+export const loadFavoritesFood = async (userId) => {
+    if (!userId) {
+        return [];
+    }
 
-        return unsubscribe;
+    try {
+        const userRef = doc(db, "User", userId);
+        const userDoc = await getDoc(userRef);
+        
+        if (userDoc.exists()) {
+            const userData = userDoc.data();
+            return userData.favorites || [];
+        }
+        return [];
     } catch (error) {
         console.error("Lỗi khi tải danh sách yêu thích:", error.message);
-        setFavorites([]);
+        return [];
     }
 }
 export const addOrder = async (userId, orderData) => {
@@ -369,7 +381,7 @@ export const addOrder = async (userId, orderData) => {
         return { success: false, message: "Lỗi khi thêm đơn hàng!" };
     }
 };
-export const checkoutOrders = async (userId, ordersToCheckout) => {
+export const checkoutOrders = async (userId, ordersToCheckout,paymentMethod) => {
     try {
         const userReference = doc(db, "User", userId);
         const userDoc = await getDoc(userReference);
@@ -380,8 +392,6 @@ export const checkoutOrders = async (userId, ordersToCheckout) => {
             if (!deliveryAddress || deliveryAddress.trim() === "") {
                 return { success: false, message: "Vui lòng cập nhật địa chỉ trước khi thanh toán!" };
             }
-
-            // Tạo một đơn hàng mới với tất cả các món
             const newOrder = {
                 items: ordersToCheckout[0].items.map(item => ({
                     foodItem: {
@@ -395,20 +405,21 @@ export const checkoutOrders = async (userId, ordersToCheckout) => {
                 status: "Chờ giao hàng",
                 createdAt: new Date(),
                 updatedAt: new Date(),
+                paymentMethod,
                 userId,
                 totalAmount: ordersToCheckout[0].totalAmount
             };
 
-            // Lưu đơn hàng vào collection "orders"
+           
             const orderRef = doc(collection(db, "orders"));
             await setDoc(orderRef, newOrder);
 
-            // Xóa giỏ hàng của người dùng
+           
             await updateDoc(userReference, {
-                cart: [], // Đặt giỏ hàng thành rỗng
+                cart: [],
             });
 
-            return { success: true, message: "Thanh toán thành công và chuyển sang trạng thái Chờ giao hàng!" };
+            return { success: true, message: "Thanh toán thành công chờ shipper giao hàng" };
         } else {
             return { success: false, message: "Người dùng không tồn tại" };
         }
@@ -515,7 +526,6 @@ export const getAnalyticsData = async (timeframe) => {
       const data = doc.data();
       const createdAt = new Date(data.createdAt);
 
-      // Lọc theo khoảng thời gian
       if (timeframe === "day" && createdAt.toDateString() === now.toDateString()) {
         filteredOrders.push(data);
       } else if (timeframe === "week" && now - createdAt <= 7 * 24 * 60 * 60 * 1000) {
@@ -525,7 +535,6 @@ export const getAnalyticsData = async (timeframe) => {
       }
     });
 
-    // Tính tổng doanh thu
     const totalRevenue = filteredOrders.reduce((sum, order) => sum + order.totalPrice, 0);
 
     return {
@@ -630,5 +639,159 @@ export const searchFoods = async (searchText) => {
   } catch (error) {
     console.error("Error searching foods:", error);
     return { success: false, error: error.message };
+  }
+};
+export const handleUserMessage = async (userId, message) => {
+  const foodName = extractFoodName(message);
+
+  let botReply = "";
+  let foundFoodItems = null;
+
+  if (!foodName) {
+    botReply = "Xin lỗi, tôi không hiểu bạn muốn tìm món ăn nào. Bạn có thể cho tôi biết tên món ăn cụ thể không?";
+  } else {
+    try {
+      // Lấy tất cả món ăn từ database
+      const allFoods = await getDocs(collection(db, "foods"));
+      const foodsList = allFoods.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      // Tìm kiếm các món ăn phù hợp
+      const matchingFoods = foodsList.filter(food => {
+        const foodNameLower = food.foodName.toLowerCase();
+        const searchTerms = foodName.toLowerCase().split(/\s+/);
+        return searchTerms.every(term => foodNameLower.includes(term));
+      });
+
+      if (matchingFoods.length > 0) {
+        foundFoodItems = matchingFoods; // Lưu danh sách món ăn tìm thấy
+
+        // Nếu tìm thấy nhiều món
+        if (matchingFoods.length > 1) {
+          botReply = `Tôi tìm thấy ${matchingFoods.length} món phù hợp:\n\n`;
+          matchingFoods.forEach((food, index) => {
+            const price = food.foodPrice ? `${food.foodPrice}₫` : 'chưa có giá';
+            const storeName = food.restaurantName || 'chưa có thông tin quán';
+            botReply += `${index + 1}. ${food.foodName} - ${price} tại quán ${storeName}\n`;
+            if (food.description) {
+              botReply += `   Mô tả: ${food.description}\n`;
+            }
+            botReply += '\n';
+          });
+        } else {
+          // Nếu chỉ tìm thấy 1 món
+          const foodItem = matchingFoods[0];
+          const price = foodItem.foodPrice ? `${foodItem.foodPrice}₫` : 'chưa có giá';
+          const storeName = foodItem.restaurantName || 'chưa có thông tin quán';
+          botReply = `Tôi tìm thấy món ${foodItem.foodName} có giá ${price} tại quán ${storeName}. ${foodItem.description ? `\nMô tả: ${foodItem.description}` : ''}`;
+        }
+      } else {
+        botReply = `Xin lỗi, tôi không tìm thấy món "${foodName}" trong menu. Bạn có thể kiểm tra lại tên món hoặc thử tìm món khác.`;
+      }
+    } catch (error) {
+      console.error("Lỗi khi truy vấn món ăn:", error);
+      botReply = "Có lỗi xảy ra khi tìm món ăn. Vui lòng thử lại sau.";
+    }
+  }
+
+  try {
+    await addDoc(collection(db, "chatHistories"), {
+      userId,
+      question: message,
+      response: botReply,
+      createdAt: Timestamp.now(),
+    });
+  } catch (error) {
+    console.error("Lỗi khi lưu lịch sử chat:", error);
+  }
+
+  return { replyText: botReply, foundFoodItems };
+};
+
+const extractFoodName = (message) => {
+  // Loại bỏ các từ thừa và chuẩn hóa tin nhắn
+  const normalizedMessage = message.toLowerCase().trim();
+  
+  // Các mẫu để tìm tên món ăn
+  const patterns = [
+    /món ăn là (.+?)(?:\s|$)/i,
+    /món (.+?)(?:\s|$)/i,
+    /tìm (.+?)(?:\s|$)/i,
+    /giá của (.+?)(?:\s|$)/i,
+    /thông tin về (.+?)(?:\s|$)/i,
+    /(.+?)(?:\s|$)/i  // Mẫu cuối cùng để bắt tất cả các từ còn lại
+  ];
+
+  // Thử từng mẫu cho đến khi tìm thấy kết quả
+  for (const pattern of patterns) {
+    const match = normalizedMessage.match(pattern);
+    if (match && match[1]) {
+      const foodName = match[1].trim();
+      // Kiểm tra xem tên món có hợp lệ không (ít nhất 2 ký tự)
+      if (foodName.length >= 2) {
+        return foodName;
+      }
+    }
+  }
+
+  return null;
+};
+
+export const updateCartItemQuantity = async (userId, foodId, newQuantity) => {
+    if (!userId || !foodId || newQuantity < 1) {
+        return { success: false, message: "Thông tin cập nhật không hợp lệ." };
+    }
+
+    try {
+        const userReference = doc(db, "User", userId);
+        const userDoc = await getDoc(userReference);
+
+        if (userDoc.exists()) {
+            const userData = userDoc.data();
+            const cart = userData.cart || [];
+            const itemIndex = cart.findIndex(item => item.foodItem.foodId === foodId);
+
+            if (itemIndex > -1) {
+                const itemToUpdate = cart[itemIndex];
+                // Đảm bảo foodPrice là số trước khi tính toán
+                const foodPrice = typeof itemToUpdate.foodItem.foodPrice === 'string' 
+                                ? parseInt(itemToUpdate.foodItem.foodPrice) || 0
+                                : itemToUpdate.foodItem.foodPrice || 0;
+                
+                itemToUpdate.soLuong = newQuantity;
+                itemToUpdate.tongGia = foodPrice * newQuantity;
+
+                await updateDoc(userReference, {
+                    cart: cart
+                });
+                return { success: true, message: "Cập nhật số lượng thành công!" };
+            } else {
+                return { success: false, message: "Không tìm thấy món ăn trong giỏ hàng." };
+            }
+        } else {
+            return { success: false, message: "Người dùng không tồn tại." };
+        }
+    } catch (error) {
+        console.error("Lỗi khi cập nhật số lượng giỏ hàng:", error);
+        return { success: false, message: "Lỗi khi cập nhật số lượng giỏ hàng!" };
+    }
+};
+
+export const getTotalOrders = async (userId) => {
+  try {
+    const ordersRef = collection(db, 'orders');
+    const q = query(
+      ordersRef,
+      where('userId', '==', userId),
+      where('status', '==', 'Đã đặt')
+    );
+    const querySnapshot = await getDocs(q);
+    console.log('Total orders found:', querySnapshot.size, 'for user:', userId);
+    return querySnapshot.size;
+  } catch (error) {
+    console.error('Error getting total orders:', error);
+    return 0;
   }
 };
