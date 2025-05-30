@@ -30,6 +30,9 @@ import SearchScreen from '../screen/SearchScreen';
 import VNPayScreen from '../screen/payment/VNPayScreen';
 import ChatBotScreen from '../screen/ChatBotScreen';
 import FavoritesScreen from '../screen/Favorites/FavoritesScreen';
+import EditFoodScreen from '../admin_app/EditFoodScreen';
+import OrderDetailScreen from '../admin_app/OrderDetailScreen';
+import ReviewScreen from '../admin_app/ReviewScreen';
 const Stack = createNativeStackNavigator();
 
 
@@ -46,14 +49,16 @@ const ScreensNavigation = () => {
         <Stack.Screen name="Home" component={HomeScreen}/>
         <Stack.Screen name="Home1" component={HomeScreen11}/>
         
-
+        <Stack.Screen name="EditFood" component={EditFoodScreen}/>
         <Stack.Screen name="AdminHome" component={AdminScreen}/>
          <Stack.Screen name="ChatBotScreen" component={ChatBotScreen}/>
         <Stack.Screen name="FoodScreen" component={FoodScreen}/>
         <Stack.Screen name="OrderScreen" component={OrderScreen}/>
+        <Stack.Screen name="OrderDetail" component={OrderDetailScreen}/>
         <Stack.Screen name="StatisticalScreen" component={StatisticalScreen}/>
         <Stack.Screen name="UpdateRestaurantScreen" component={UpdateRestaurantScreen}/>
         <Stack.Screen name="UserScreen" component={UserScreen}/>
+        <Stack.Screen name="ReviewScreen" component={ReviewScreen}/>
         <Stack.Screen name="Favorites" component={Favorites}/>
 
         <Stack.Screen name="ForgetPassword" component={ForgetPassword}/>

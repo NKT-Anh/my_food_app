@@ -9,7 +9,7 @@ const Cart = ({ navigation }) => {
   const { user } = useContext(UserContext);
   const [cart, setCart] = useState([]);
   const [selectedStatus, setSelectedStatus] = useState('Chờ xác nhận');
-  const statusList = ['Chờ xác nhận', 'Chờ giao hàng', 'Đang giao', 'Đã đặt'];
+  const statusList = ['Chờ xác nhận'];
   const [paymentMethod, setPaymentMethod] = useState('Trả sau');
 
   useEffect(() => {
@@ -139,7 +139,6 @@ const Cart = ({ navigation }) => {
       return;
     }
     if (newQuantity < 1) {
-      // Nếu số lượng mới là 0 hoặc âm, hỏi xác nhận xóa
       Alert.alert(
         "Xác nhận xóa",
         "Bạn có muốn xóa món ăn này khỏi giỏ hàng không?",
@@ -178,8 +177,22 @@ const Cart = ({ navigation }) => {
         return;
     }
 
-    try {
+    const unpaidItems = ordersToCheckout.filter(item => 
+        item.paymentStatus === 'Chưa thanh toán' || 
+        item.paymentStatus === 'Thanh toán thất bại'
+    );
 
+    if (paymentMethod === 'Trả trước' && unpaidItems.length > 0) {
+        Alert.alert(
+            "Không thể thanh toán",
+            "Có món hàng chưa thanh toán hoặc thanh toán thất bại. Vui lòng xóa các món này khỏi giỏ hàng trước khi thanh toán trả trước.",
+            [{ text: "OK" }]
+        );
+        return;
+    }
+
+    try {
+       const totalAmount = ordersToCheckout.reduce((sum, item) => sum + (item.tongGia || 0), 0);
         const groupedOrder = {
             items: ordersToCheckout.map(item => ({
                 foodItem: { 
@@ -187,33 +200,80 @@ const Cart = ({ navigation }) => {
                     ...item.foodItem
                 },
                 soLuong: item.soLuong || 0,
-                tongGia: item.tongGia || 0
+                tongGia: item.tongGia || 0,
+                paymentStatus: item.paymentStatus || 'Chưa thanh toán'
             })),
-            totalAmount: ordersToCheckout.reduce((sum, item) => sum + (item.tongGia || 0), 0),
+            totalAmount: totalAmount,
             createdAt: new Date(),
-            
-            status: 'Chờ giao hàng',
+            status: 'Chờ thanh toán',
             userId: user.id
         };
 
-
-        const result = await checkoutOrders(user.id, [groupedOrder],paymentMethod);
-
-        if (result.success) {
-            alert(result.message);
-
-
-            loadCartRealTime(user.id, (cartData) => {
-                if (cartData) {
-                    setCart(cartData);
-                }
-            });
+        if (paymentMethod === 'Trả trước') {
+            const result = await checkoutOrders(user.id, [groupedOrder], paymentMethod, false);
+            
+            if (result.success) {
+                navigation.navigate('VNPayScreen', {
+                    userId: user.id,
+                    userName: user.name || '',
+                    cartItems: groupedOrder.items,
+                    totalPrice: totalAmount,
+                    paymentMethod: paymentMethod,
+                    orderId: result.orderId,
+                    onPaymentComplete: (success) => {
+                        if (success) {
+                            updateOrderStatus(user.id, result.orderId, 'Chờ giao hàng')
+                                .then(() => {
+                                    loadCartRealTime(user.id, (cartData) => {
+                                        if (cartData) {
+                                            setCart(cartData);
+                                        }
+                                    });
+                                })
+                                .catch(error => {
+                                    console.error('Error updating order status:', error);
+                                });
+                        } else {
+                            updateOrderStatus(user.id, result.orderId, 'Thanh toán thất bại')
+                                .then(() => {
+                                    loadCartRealTime(user.id, (cartData) => {
+                                        if (cartData) {
+                                            setCart(cartData);
+                                        }
+                                    });
+                                })
+                                .catch(error => {
+                                    console.error('Error updating order status:', error);
+                                });
+                        }
+                    }
+                });
+            } else {
+                Alert.alert("Lỗi", result.message || 'Lỗi tạo đơn hàng');
+            }
         } else {
-            alert(result.message);
+            const result = await checkoutOrders(user.id, [groupedOrder], paymentMethod, true);
+
+            if (result.success) {
+                Alert.alert("Thành công", result.message, [
+                    {
+                        text: "OK",
+                        onPress: () => {
+                            loadCartRealTime(user.id, (cartData) => {
+                                if (cartData) {
+                                    setCart(cartData);
+                                }
+                            });
+                        }
+                    }
+                ]);
+            } else {
+                Alert.alert("Lỗi", result.message);
+            }
         }
     } catch (error) {
         console.error("Lỗi khi thanh toán:", error.message);
-        alert("Đã xảy ra lỗi khi thanh toán!");
+        Alert.alert("Lỗi", "Đã xảy ra lỗi khi xử lý thanh toán. Vui lòng thử lại sau.");
     }
 };
 
@@ -221,7 +281,13 @@ const Cart = ({ navigation }) => {
     <View style={{ flex: 1 }}>  
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.nav}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <TouchableOpacity 
+            onPress={() => navigation.reset({
+              index: 0,
+              routes: [{ name: 'Home' }],
+            })} 
+            style={styles.backButton}
+          >
             <Icon name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.navTitle}>Giỏ hàng</Text>
@@ -274,10 +340,8 @@ const Cart = ({ navigation }) => {
           </View>
       </View>
         {selectedStatus === 'Chờ xác nhận' && (
-          
           <TouchableOpacity style={styles.checkoutButton} onPress={handleCheckout}>
             <Text style={styles.checkoutButtonText}>Thanh toán tất cả</Text>
-            
           </TouchableOpacity>
         )}
       </SafeAreaView>

@@ -356,7 +356,7 @@ export const addOrder = async (userId, orderData) => {
             const userData = userDoc.data();
             const deliveryAddress = userData.address || " "; 
 
-            // Kiểm tra nếu không có địa chỉ
+
             if (!deliveryAddress || deliveryAddress.trim() === "") {
                 return { success: false, message: "Vui lòng cập nhật địa chỉ trước khi đặt hàng!" };
             }
@@ -381,7 +381,7 @@ export const addOrder = async (userId, orderData) => {
         return { success: false, message: "Lỗi khi thêm đơn hàng!" };
     }
 };
-export const checkoutOrders = async (userId, ordersToCheckout,paymentMethod) => {
+export const checkoutOrders = async (userId, ordersToCheckout, paymentMethod) => {
     try {
         const userReference = doc(db, "User", userId);
         const userDoc = await getDoc(userReference);
@@ -392,34 +392,64 @@ export const checkoutOrders = async (userId, ordersToCheckout,paymentMethod) => 
             if (!deliveryAddress || deliveryAddress.trim() === "") {
                 return { success: false, message: "Vui lòng cập nhật địa chỉ trước khi thanh toán!" };
             }
-            const newOrder = {
+
+            const baseOrderData = {
                 items: ordersToCheckout[0].items.map(item => ({
                     foodItem: {
                         foodName: item.foodItem.foodName,
-                        ...item.foodItem
+                        foodId: item.foodItem.foodId,
+                        foodPrice: item.foodItem.foodPrice,
+                        foodImage: item.foodItem.foodImage,
+                        description: item.foodItem.description,
+                        restaurantName: item.foodItem.restaurantName,
+                        restaurantAddress: item.foodItem.restaurantAddress,
+                        restaurantPhone: item.foodItem.restaurantPhone,
+                        idRestaurant: item.foodItem.idRestaurant
                     },
                     soLuong: item.soLuong,
                     tongGia: item.tongGia
                 })),
                 deliveryAddress,
-                status: "Chờ giao hàng",
                 createdAt: new Date(),
                 updatedAt: new Date(),
                 paymentMethod,
                 userId,
-                totalAmount: ordersToCheckout[0].totalAmount
+                totalAmount: ordersToCheckout[0].totalAmount,
+                paymentStatus: paymentMethod === 'Trả trước' ? 'Chưa thanh toán' : 'Đã thanh toán'
             };
 
-           
-            const orderRef = doc(collection(db, "orders"));
-            await setDoc(orderRef, newOrder);
+            if (paymentMethod === 'Trả trước') {
+                // Tạo đơn hàng với trạng thái "Chờ thanh toán"
+                const newOrder = {
+                    ...baseOrderData,
+                    status: "Chờ thanh toán"
+                };
 
-           
-            await updateDoc(userReference, {
-                cart: [],
-            });
+                const orderRef = doc(collection(db, "orders"));
+                await setDoc(orderRef, newOrder);
 
-            return { success: true, message: "Thanh toán thành công chờ shipper giao hàng" };
+                return { 
+                    success: true, 
+                    message: "Đơn hàng đã được tạo, vui lòng thanh toán",
+                    orderId: orderRef.id
+                };
+            } else {
+                // Xử lý thanh toán trả sau
+                const newOrder = {
+                    ...baseOrderData,
+                    status: "Chờ giao hàng"
+                };
+
+                const orderRef = doc(collection(db, "orders"));
+                await setDoc(orderRef, newOrder);
+
+                // Xóa giỏ hàng sau khi tạo đơn hàng trả sau
+                await updateDoc(userReference, {
+                    cart: []
+                });
+
+                return { success: true, message: "Thanh toán thành công chờ shipper giao hàng" };
+            }
         } else {
             return { success: false, message: "Người dùng không tồn tại" };
         }
@@ -794,4 +824,104 @@ export const getTotalOrders = async (userId) => {
     console.error('Error getting total orders:', error);
     return 0;
   }
+};
+
+export const saveOrderAfterPayment = async (userId, orderId, success) => {
+    try {
+        // Validate input parameters
+        if (!userId || typeof userId !== 'string') {
+            console.error("Invalid userId:", userId);
+            return { success: false, message: "ID người dùng không hợp lệ" };
+        }
+
+        if (!orderId || typeof orderId !== 'string') {
+            console.error("Invalid orderId:", orderId);
+            return { success: false, message: "ID đơn hàng không hợp lệ" };
+        }
+
+        if (typeof success !== 'boolean') {
+            console.error("Invalid success parameter:", success);
+            return { success: false, message: "Trạng thái thanh toán không hợp lệ" };
+        }
+
+        // Get references
+        const orderRef = doc(db, "orders", orderId);
+        const userRef = doc(db, "User", userId);
+        
+        // Check if order exists
+        const orderDoc = await getDoc(orderRef);
+        if (!orderDoc.exists()) {
+            console.error("Order not found:", orderId);
+            return { success: false, message: "Không tìm thấy đơn hàng!" };
+        }
+
+        const orderData = orderDoc.data();
+        
+        // Validate order status
+        if (!orderData.status || orderData.status !== "Chờ thanh toán") {
+            console.log("Invalid order status:", orderData.status);
+            return { success: false, message: "Đơn hàng không ở trạng thái chờ thanh toán" };
+        }
+
+        // Prepare update data
+        const updateData = {
+            updatedAt: new Date()
+        };
+
+        if (success) {
+            // Payment successful
+            updateData.status = "Chờ giao hàng";
+            updateData.paymentStatus = "Đã thanh toán";
+
+            // Update order
+            await updateDoc(orderRef, updateData);
+
+            // Clear cart
+            await updateDoc(userRef, {
+                cart: []
+            });
+
+            return { 
+                success: true, 
+                message: "Thanh toán thành công",
+                orderId: orderId
+            };
+        } else {
+            // Payment failed
+            updateData.status = "Thanh toán thất bại";
+            updateData.paymentStatus = "Thanh toán thất bại";
+
+            // Update order
+            await updateDoc(orderRef, updateData);
+
+            return { 
+                success: false, 
+                message: "Thanh toán thất bại",
+                orderId: orderId
+            };
+        }
+    } catch (error) {
+        console.error("Lỗi khi cập nhật trạng thái đơn hàng sau thanh toán:", error);
+        return { 
+            success: false, 
+            message: "Lỗi khi cập nhật trạng thái đơn hàng",
+            error: error.message 
+        };
+    }
+};
+
+export const updateFoodItem = async (foodId, updateData) => {
+    if (!foodId || !updateData) {
+        return { success: false, message: "Thiếu thông tin cập nhật." };
+    }
+
+    try {
+        const foodRef = doc(db, "foods", foodId);
+        await updateDoc(foodRef, updateData);
+
+        return { success: true, message: "Cập nhật món ăn thành công!" };
+    } catch (error) {
+        console.error("Lỗi khi cập nhật món ăn:", error);
+        return { success: false, message: "Lỗi khi cập nhật món ăn!" };
+    }
 };

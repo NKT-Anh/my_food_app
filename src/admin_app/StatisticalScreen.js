@@ -122,11 +122,13 @@ const StatisticalScreen = () => {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Thống kê theo ngày</Text>
+        
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
         <View style={styles.chartContainer}>
           <Text style={styles.chartTitle}>Số lượng đơn hàng</Text>
           <LineChart
             data={chartData}
-            width={screenWidth - 40}
+            width={Math.max(screenWidth - 40, stats.dailyStats.length * 30)}
             height={220}
             chartConfig={{
               backgroundColor: '#ffffff',
@@ -159,12 +161,14 @@ const StatisticalScreen = () => {
             yAxisInterval={1}
           />
         </View>
+        </ScrollView>
 
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
         <View style={styles.chartContainer}>
           <Text style={styles.chartTitle}>Doanh thu (nghìn VND)</Text>
           <LineChart
             data={revenueChartData}
-            width={screenWidth - 40}
+            width={Math.max(screenWidth - 40, stats.dailyRevenue.length * 30)}
             height={220}
             chartConfig={{
               backgroundColor: '#ffffff',
@@ -197,6 +201,7 @@ const StatisticalScreen = () => {
             yAxisInterval={1}
           />
         </View>
+        </ScrollView>
       </View>
 
       <View style={styles.section}>
@@ -222,6 +227,17 @@ const StatisticalScreen = () => {
             </View>
             <Text style={styles.statValue}>{stats.totalFoods}</Text>
             <Text style={styles.statLabel}>Món ăn</Text>
+          </View>
+
+          <View style={styles.statCard}>
+            <View style={styles.statHeader}>
+              <Ionicons name="star-outline" size={24} color="#FF6B6B" />
+              <TouchableOpacity onPress={() => navigation.navigate('ReviewScreen')}>
+                <Ionicons name="arrow-forward" size={24} color="#FF6B6B" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.statValue}>...</Text>
+            <Text style={styles.statLabel}>Đánh giá/Phản hồi</Text>
           </View>
         </View>
       </View>
@@ -337,5 +353,10 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 10,
     textAlign: 'center',
+  },
+  horizontalScroll: {
+    marginHorizontal: -10,
+    paddingHorizontal: 10,
+    marginBottom: 15,
   },
 });

@@ -1,8 +1,9 @@
-import { StyleSheet, Text, View, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native'
+import { StyleSheet, Text, View, FlatList, ActivityIndicator, TouchableOpacity, Modal, ScrollView } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import { collection, getDocs, query, orderBy, doc, getDoc } from 'firebase/firestore';
 import { db } from '../Firebase/FirebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
 const OrderScreen = () => {
     const [orders, setOrders] = useState([]);
@@ -14,10 +15,31 @@ const OrderScreen = () => {
         delivering: 0,
         completed: 0
     });
+    const navigation = useNavigation();
+    const [selectedStatus, setSelectedStatus] = useState('Tất cả');
+    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [filterByDate, setFilterByDate] = useState(false);
+
+    // Generate array of dates for the last 7 days
+    const getLast7Days = () => {
+        const dates = [];
+        for (let i = 0; i < 7; i++) {
+            const date = new Date();
+            date.setDate(date.getDate() - i);
+            dates.push(date);
+        }
+        return dates;
+    };
 
     useEffect(() => {
         loadOrders();
     }, []);
+
+    // Update stats whenever orders, selectedDate or filterByDate changes
+    useEffect(() => {
+        updateStats(orders);
+    }, [orders, selectedDate, filterByDate]);
 
     const loadOrders = async () => {
         try {
@@ -48,21 +70,27 @@ const OrderScreen = () => {
                 })
             );
             setOrders(ordersList);
-
-            // Calculate statistics
-            const newStats = {
-                total: ordersList.length,
-                pending: ordersList.filter(order => order.status === 'Chờ xác nhận').length,
-                ready: ordersList.filter(order => order.status === 'Chờ giao hàng').length,
-                delivering: ordersList.filter(order => order.status === 'Đang giao').length,
-                completed: ordersList.filter(order => order.status === 'Đã đặt').length
-            };
-            setStats(newStats);
         } catch (error) {
             console.error("Lỗi khi tải danh sách đơn hàng:", error);
         } finally {
             setLoading(false);
         }
+    };
+
+    const updateStats = (ordersList) => {
+        const filteredOrdersForStats = ordersList.filter(order => {
+            if (!filterByDate) return true;
+            return order.createdAt && isSameDay(order.createdAt.toDate(), selectedDate);
+        });
+
+        const newStats = {
+            total: filteredOrdersForStats.length,
+            pending: filteredOrdersForStats.filter(order => order.status === 'Chờ xác nhận').length,
+            ready: filteredOrdersForStats.filter(order => order.status === 'Chờ giao hàng').length,
+            delivering: filteredOrdersForStats.filter(order => order.status === 'Đang giao').length,
+            completed: filteredOrdersForStats.filter(order => order.status === 'Đã đặt').length
+        };
+        setStats(newStats);
     };
 
     const formatDate = (timestamp) => {
@@ -74,6 +102,14 @@ const OrderScreen = () => {
             day: '2-digit',
             hour: '2-digit',
             minute: '2-digit'
+        });
+    };
+
+    const formatDateForDisplay = (date) => {
+        return date.toLocaleDateString('vi-VN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
         });
     };
 
@@ -100,9 +136,9 @@ const OrderScreen = () => {
     };
 
     const renderOrderItem = ({ item }) => (
-        <View style={styles.orderCard}>
+        <TouchableOpacity style={styles.orderCard} onPress={() => navigation.navigate('OrderDetail', { orderId: item.id })}>
             <View style={styles.orderHeader}>
-                <Text style={styles.orderId}>Mã đơn: {item.id}</Text>
+                <Text style={styles.orderId}>Mã đơn: {item.id.length > 10 ? `${item.id.substring(0, 10)}...` : item.id}</Text>
                 <Text style={[styles.orderStatus, { color: getStatusColor(item.status) }]}>
                     {item.status}
                 </Text>
@@ -140,8 +176,35 @@ const OrderScreen = () => {
                     </View>
                 ))}
             </View>
-        </View>
+        </TouchableOpacity>
     );
+
+    const isSameDay = (date1, date2) => {
+        return date1.getFullYear() === date2.getFullYear() &&
+            date1.getMonth() === date2.getMonth() &&
+            date1.getDate() === date2.getDate();
+    };
+
+    const filteredOrders = orders.filter(order => {
+        // Filter by status
+        const statusMatch = selectedStatus === 'Tất cả' || 
+            (selectedStatus === 'Chờ xác nhận' && order.status === 'Chờ xác nhận') ||
+            (selectedStatus === 'Chờ giao' && order.status === 'Chờ giao hàng') ||
+            (selectedStatus === 'Đang giao' && order.status === 'Đang giao') ||
+            (selectedStatus === 'Hoàn thành' && order.status === 'Đã đặt');
+
+        // Filter by date if enabled
+        const dateMatch = !filterByDate || 
+            (order.createdAt && isSameDay(order.createdAt.toDate(), selectedDate));
+
+        return statusMatch && dateMatch;
+    });
+
+    const handleDateSelect = (date) => {
+        setSelectedDate(date);
+        setFilterByDate(true);
+        setShowDatePicker(false);
+    };
 
     if (loading) {
         return (
@@ -156,38 +219,118 @@ const OrderScreen = () => {
         <View style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>Danh sách đơn hàng</Text>
+                <View style={styles.dateFilterContainer}>
+                    <TouchableOpacity 
+                        style={[styles.dateFilterButton, filterByDate && styles.dateFilterButtonActive]} 
+                        onPress={() => setShowDatePicker(true)}
+                    >
+                        <Ionicons name="calendar-outline" size={20} color={filterByDate ? "#fff" : "#666"} />
+                        <Text style={[styles.dateFilterText, filterByDate && styles.dateFilterTextActive]}>
+                            {filterByDate ? formatDateForDisplay(selectedDate) : "Chọn ngày"}
+                        </Text>
+                    </TouchableOpacity>
+                    {filterByDate && (
+                        <TouchableOpacity 
+                            style={styles.clearDateButton}
+                            onPress={() => {
+                                setFilterByDate(false);
+                            }}
+                        >
+                            <Ionicons name="close-circle" size={20} color="#666" />
+                        </TouchableOpacity>
+                    )}
+                </View>
                 <View style={styles.statsContainer}>
-                    <View style={styles.statItem}>
+                    <TouchableOpacity 
+                        style={[styles.statItem, selectedStatus === 'Tất cả' && styles.statItemSelected]} 
+                        onPress={() => setSelectedStatus('Tất cả')}
+                    >
                         <Text style={styles.statLabel}>Tổng số:</Text>
                         <Text style={styles.statValue}>{stats.total}</Text>
-                    </View>
-                    <View style={styles.statItem}>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={[styles.statItem, selectedStatus === 'Chờ xác nhận' && styles.statItemSelected]} 
+                        onPress={() => setSelectedStatus('Chờ xác nhận')}
+                    >
                         <Text style={[styles.statLabel, { color: '#FFA500' }]}>Chờ xác nhận:</Text>
                         <Text style={styles.statValue}>{stats.pending}</Text>
-                    </View>
-                    <View style={styles.statItem}>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={[styles.statItem, selectedStatus === 'Chờ giao' && styles.statItemSelected]} 
+                        onPress={() => setSelectedStatus('Chờ giao')}
+                    >
                         <Text style={[styles.statLabel, { color: '#007BFF' }]}>Chờ giao:</Text>
                         <Text style={styles.statValue}>{stats.ready}</Text>
-                    </View>
-                    <View style={styles.statItem}>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={[styles.statItem, selectedStatus === 'Đang giao' && styles.statItemSelected]} 
+                        onPress={() => setSelectedStatus('Đang giao')}
+                    >
                         <Text style={[styles.statLabel, { color: '#28A745' }]}>Đang giao:</Text>
                         <Text style={styles.statValue}>{stats.delivering}</Text>
-                    </View>
-                    <View style={styles.statItem}>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={[styles.statItem, selectedStatus === 'Hoàn thành' && styles.statItemSelected]} 
+                        onPress={() => setSelectedStatus('Hoàn thành')}
+                    >
                         <Text style={[styles.statLabel, { color: '#6C757D' }]}>Hoàn thành:</Text>
                         <Text style={styles.statValue}>{stats.completed}</Text>
-                    </View>
+                    </TouchableOpacity>
                 </View>
             </View>
 
+            <Modal
+                visible={showDatePicker}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setShowDatePicker(false)}
+            >
+                <View style={styles.modalContainer}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Chọn ngày</Text>
+                            <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                                <Ionicons name="close" size={24} color="#666" />
+                            </TouchableOpacity>
+                        </View>
+                        <ScrollView style={styles.dateList}>
+                            {getLast7Days().map((date, index) => (
+                                <TouchableOpacity
+                                    key={index}
+                                    style={[
+                                        styles.dateItem,
+                                        isSameDay(date, selectedDate) && styles.dateItemSelected
+                                    ]}
+                                    onPress={() => handleDateSelect(date)}
+                                >
+                                    <Text style={[
+                                        styles.dateItemText,
+                                        isSameDay(date, selectedDate) && styles.dateItemTextSelected
+                                    ]}>
+                                        {formatDateForDisplay(date)}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
+
             <FlatList
-                data={orders}
+                data={filteredOrders}
                 keyExtractor={(item) => item.id}
                 renderItem={renderOrderItem}
                 contentContainerStyle={styles.listContainer}
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
-                        <Text style={styles.emptyText}>Không có đơn hàng nào</Text>
+                        <Text style={styles.emptyText}>
+                            {filterByDate 
+                                ? `Không có đơn hàng nào vào ngày ${formatDateForDisplay(selectedDate)}`
+                                : selectedStatus === 'Tất cả' 
+                                    ? 'Không có đơn hàng nào' 
+                                    : `Không có đơn hàng nào ở trạng thái "${selectedStatus}"`
+                            }
+                        </Text>
                     </View>
                 }
             />
@@ -223,6 +366,80 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#333',
     },
+    dateFilterContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 10,
+        marginBottom: 10,
+    },
+    dateFilterButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f0f0f0',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+        marginRight: 10,
+    },
+    dateFilterButtonActive: {
+        backgroundColor: '#007BFF',
+    },
+    dateFilterText: {
+        marginLeft: 8,
+        fontSize: 14,
+        color: '#666',
+    },
+    dateFilterTextActive: {
+        color: '#fff',
+    },
+    clearDateButton: {
+        padding: 8,
+    },
+    modalContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        borderRadius: 10,
+        width: '80%',
+        maxHeight: '80%',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    dateList: {
+        padding: 15,
+    },
+    dateItem: {
+        padding: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+    },
+    dateItemSelected: {
+        backgroundColor: '#007BFF',
+        borderRadius: 8,
+    },
+    dateItemText: {
+        fontSize: 16,
+        color: '#333',
+    },
+    dateItemTextSelected: {
+        color: '#fff',
+        fontWeight: 'bold',
+    },
     statsContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
@@ -236,6 +453,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginRight: 15,
         marginBottom: 5,
+        padding: 8,
+        borderRadius: 8,
+    },
+    statItemSelected: {
+        backgroundColor: '#fff',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
     },
     statLabel: {
         fontSize: 14,

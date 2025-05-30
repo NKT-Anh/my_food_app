@@ -64,7 +64,9 @@ const FoodScreen = () => {
         <Text style={styles.itemDesc}>{item.description}</Text>
       </View>
       <View style={styles.actionIcons}>
-        <Feather name="edit" size={22} color="#007BFF" style={{ marginRight: 12 }} />
+        <TouchableOpacity onPress={() => navigation.navigate('EditFood', { foodData: item })} style={{ marginRight: 12 }}>
+          <Feather name="edit" size={22} color="#007BFF" />
+        </TouchableOpacity>
         <Feather name="trash-2" size={22} color="red" onPress={() => deleteFood(item.id)} />
       </View>
     </View>

@@ -13,6 +13,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import Style from '../../globals/style';
 import { UserContext } from '../../Firebase/UserContext';
 import { getAuth, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const ChangePassword = () => {
   const navigation = useNavigation();
@@ -33,7 +34,14 @@ const ChangePassword = () => {
   };
 
   const handleChangePassword = async () => {
-    if (!validatePassword()) {
+    if (newPassword !== confirmPassword) {
+        Alert.alert("Lỗi", "Mật khẩu mới và xác nhận mật khẩu không khớp.");
+        return;
+    }
+
+    const passwordValidationError = validatePassword(newPassword);
+    if (passwordValidationError) {
+      Alert.alert("Lỗi", passwordValidationError);
       return;
     }
 
@@ -41,6 +49,12 @@ const ChangePassword = () => {
     try {
       const auth = getAuth();
       const user = auth.currentUser;
+
+      if (!user) {
+          Alert.alert("Lỗi", "Không tìm thấy thông tin người dùng.");
+          setLoading(false);
+          return;
+      }
 
       // Re-authenticate user
       const credential = EmailAuthProvider.credential(
@@ -63,21 +77,24 @@ const ChangePassword = () => {
       );
     } catch (error) {
       console.error('Error changing password:', error);
-      let errorMessage = 'Mật khẩu không chính xác';
+      let errorMessage = 'Đã xảy ra lỗi khi đổi mật khẩu.';
       
       switch (error.code) {
         case 'auth/wrong-password':
         case 'auth/invalid-credential':
-          errorMessage = 'Mật khẩu hiện tại không chính xác';
+          errorMessage = 'Mật khẩu hiện tại không chính xác.';
           break;
         case 'auth/requires-recent-login':
-          errorMessage = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại';
+          errorMessage = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
           break;
         case 'auth/weak-password':
-          errorMessage = 'Mật khẩu mới quá yếu. Vui lòng sử dụng mật khẩu mạnh hơn';
+          errorMessage = 'Mật khẩu mới quá yếu. Vui lòng sử dụng mật khẩu mạnh hơn.';
           break;
+        case 'auth/network-request-failed':
+            errorMessage = 'Lỗi mạng. Vui lòng kiểm tra kết nối của bạn.';
+            break;
         default:
-          errorMessage = 'Không thể thay đổi mật khẩu. Vui lòng thử lại sau';
+          errorMessage = `Không thể thay đổi mật khẩu. Lỗi: ${error.message || error.code}. Vui lòng thử lại sau.`;
       }
       
       Alert.alert('Lỗi', errorMessage);
@@ -87,6 +104,7 @@ const ChangePassword = () => {
   };
 
   return (
+    <SafeAreaView style={{flex:1}}> 
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity
@@ -181,6 +199,7 @@ const ChangePassword = () => {
         </TouchableOpacity>
       </View>
     </View>
+    </SafeAreaView>
   );
 };
 
