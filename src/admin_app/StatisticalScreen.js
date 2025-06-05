@@ -5,27 +5,55 @@ import { Ionicons } from '@expo/vector-icons';
 import { LineChart } from 'react-native-chart-kit';
 import { Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const screenWidth = Dimensions.get('window').width;
 
 const StatisticalScreen = () => {
   const [stats, setStats] = useState(null);
+  const [dailyStats, setDailyStats] = useState([]);
+  const [dailyRevenue, setDailyRevenue] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [resetKey, setResetKey] = useState(0);
   const navigation = useNavigation();
 
   useEffect(() => {
     const fetchStats = async () => {
-      const result = await getOverviewStats();
-      if (result.success) {
-        setStats(result.data);
+      setLoading(true);
+      if (selectedDate) {
+        // Lấy thống kê theo tháng đã chọn
+        const result = await getOverviewStats(selectedDate.getMonth() + 1, selectedDate.getFullYear());
+        if (result.success) {
+          setStats(result.data);
+          setDailyStats(result.data.dailyStats);
+          setDailyRevenue(result.data.dailyRevenue);
+        } else {
+          setStats(null);
+          setDailyStats([]);
+          setDailyRevenue([]);
+        }
       } else {
-        console.error(result.error);
+        // Lấy tổng tất cả
+        const allResult = await getOverviewStats();
+        // Lấy dailyStats của tháng 5 (năm hiện tại)
+        const now = new Date();
+        const monthResult = await getOverviewStats(6, now.getFullYear());
+        if (allResult.success && monthResult.success) {
+          setStats(allResult.data);
+          setDailyStats(monthResult.data.dailyStats);
+          setDailyRevenue(monthResult.data.dailyRevenue);
+        } else {
+          setStats(null);
+          setDailyStats([]);
+          setDailyRevenue([]);
+        }
       }
       setLoading(false);
     };
-
     fetchStats();
-  }, []);
+  }, [selectedDate, resetKey]);
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -51,10 +79,10 @@ const StatisticalScreen = () => {
   }
 
   const chartData = {
-    labels: stats.dailyStats.map((_, index) => `${index + 1}`),
+    labels: dailyStats.map((_, index) => `${index + 1}`),
     datasets: [
       {
-        data: stats.dailyStats,
+        data: dailyStats,
         color: (opacity = 1) => `rgba(255, 107, 107, ${opacity})`,
         strokeWidth: 2
       }
@@ -62,10 +90,10 @@ const StatisticalScreen = () => {
   };
 
   const revenueChartData = {
-    labels: stats.dailyRevenue.map((_, index) => `${index + 1}`),
+    labels: dailyRevenue.map((_, index) => `${index + 1}`),
     datasets: [
       {
-        data: stats.dailyRevenue.map(revenue => revenue / 1000), // Chuyển đổi sang nghìn VND
+        data: dailyRevenue.map(revenue => revenue / 1000),
         color: (opacity = 1) => `rgba(46, 204, 113, ${opacity})`,
         strokeWidth: 2
       }
@@ -73,7 +101,58 @@ const StatisticalScreen = () => {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} key={resetKey}>
+      {/* Bộ chọn tháng/năm */}
+      <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 15 }}>
+        <TouchableOpacity
+          onPress={() => {
+            setSelectedDate(null);
+            setShowDatePicker(false);
+            setResetKey(prev => prev + 1); // Tăng key để reset lại screen
+          }}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: selectedDate === null ? '#FF6B6B' : '#fff',
+            padding: 10,
+            borderRadius: 8,
+            elevation: 2,
+            marginRight: 10,
+          }}
+        >
+          <Text style={{ marginLeft: 8, fontSize: 16, color: selectedDate === null ? "#fff" : "#FF6B6B" }}>Tất cả</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setShowDatePicker(true)}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: selectedDate !== null ? '#FF6B6B' : '#fff',
+            padding: 10,
+            borderRadius: 8,
+            elevation: 2,
+          }}
+        >
+          <Ionicons name="calendar-outline" size={22} color={selectedDate !== null ? "#fff" : "#007bff"} />
+          <Text style={{ marginLeft: 8, fontSize: 16, color: selectedDate !== null ? "#fff" : "#007bff" }}>
+            {selectedDate
+              ? `${selectedDate.getMonth() + 1 < 10 ? `0${selectedDate.getMonth() + 1}` : selectedDate.getMonth() + 1}/${selectedDate.getFullYear()}`
+              : "Chọn tháng/năm"}
+          </Text>
+        </TouchableOpacity>
+        {showDatePicker && (
+          <DateTimePicker
+            value={selectedDate || new Date()}
+            mode="date"
+            display="default"
+            onChange={(event, date) => {
+              setShowDatePicker(false);
+              if (date) setSelectedDate(date);
+            }}
+          />
+        )}
+      </View>
+
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Thống kê đơn hàng</Text>

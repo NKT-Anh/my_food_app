@@ -46,7 +46,7 @@ const VNPayScreen = ({route, navigation}) => {
 
   useEffect(() => {
     // Tạo payment URL khi component mount
-    fetch('http://192.168.2.226:8888/order/create_payment_url', {
+    fetch('http://192.168.1.56:8888/order/create_payment_url', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -103,7 +103,6 @@ const VNPayScreen = ({route, navigation}) => {
             [{ 
               text: "OK", 
               onPress: () => {
-                // Chuyển về Home sau khi thanh toán thành công
                 navigation.reset({
                   index: 0,
                   routes: [{ name: 'Home' }],

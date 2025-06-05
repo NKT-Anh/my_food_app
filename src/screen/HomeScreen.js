@@ -200,6 +200,7 @@ const HomeScreen = () => {
               <Text style={styles.locationText}>Giao đến: Hà Nội</Text>
               <Ionicons name="chevron-down" size={20} color={Style.colors.cam} />
             </View>
+            
             <TouchableOpacity style={styles.cartIcon} onPress={() => navigation.navigate('Cart')}>
               <MaterialIcons name="shopping-cart" size={24} color={Style.colors.cam} />
               {cartItems.length > 0 && (

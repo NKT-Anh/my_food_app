@@ -6,12 +6,15 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import { UserContext } from '../Firebase/UserContext';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const HomeShipper = ({ navigation }) => {
   const { user } = useContext(UserContext);
   const [pendingOrders, setPendingOrders] = useState([]);
   const [inProgressOrders, setInProgressOrders] = useState([]);
   const [activeTab, setActiveTab] = useState('pending');
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   useEffect(() => {
     if (user && user.id) {
@@ -63,6 +66,18 @@ const HomeShipper = ({ navigation }) => {
   const openDeliveryLocation = (address) => {
     const url = `https://maps.google.com/?q=${encodeURIComponent(address)}`;
     Linking.openURL(url);
+  };
+
+  const filterOrdersByDate = (orders) => {
+    return orders.filter(order => {
+      if (!order.createdAt) return false;
+      const orderDate = order.createdAt.toDate ? order.createdAt.toDate() : new Date(order.createdAt);
+      return (
+        orderDate.getDate() === selectedDate.getDate() &&
+        orderDate.getMonth() === selectedDate.getMonth() &&
+        orderDate.getFullYear() === selectedDate.getFullYear()
+      );
+    });
   };
 
   const renderOrderItem = ({ item }) => (
@@ -158,13 +173,35 @@ const HomeShipper = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
+      <View style={{ flexDirection: 'row', alignItems: 'center', padding: 10 }}>
+        <TouchableOpacity onPress={() => setShowDatePicker(true)} style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <MaterialIcons name="date-range" size={22} color="#007bff" />
+          <Text style={{ marginLeft: 8, fontSize: 16 }}>
+            {selectedDate.toLocaleDateString('vi-VN')}
+          </Text>
+        </TouchableOpacity>
+        {showDatePicker && (
+          <DateTimePicker
+            value={selectedDate}
+            mode="date"
+            display="default"
+            onChange={(event, date) => {
+              setShowDatePicker(false);
+              if (date) setSelectedDate(date);
+            }}
+          />
+        )}
+      </View>
+
       <FlatList
-        data={activeTab === 'pending' ? pendingOrders : inProgressOrders}
+        data={activeTab === 'pending'
+          ? filterOrdersByDate(pendingOrders)
+          : filterOrdersByDate(inProgressOrders)}
         keyExtractor={(item) => item.id}
         renderItem={renderOrderItem}
         ListEmptyComponent={
           <Text style={styles.emptyText}>
-            Không có đơn hàng {activeTab === 'pending' ? 'chờ giao' : 'đang giao'}
+            Không có đơn hàng {activeTab === 'pending' ? 'chờ giao' : 'đang giao'} trong ngày này
           </Text>
         }
       />
@@ -239,6 +276,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#007bff',
+    marginTop: 5,
   },
   orderTotal: {
     fontSize: 16,
@@ -259,7 +297,7 @@ const styles = StyleSheet.create({
   foodDetails: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 5,
+    alignItems: 'center',
   },
   foodQuantity: {
     fontSize: 14,
@@ -307,19 +345,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  emptyText: {
-    textAlign: 'center',
-    marginTop: 20,
-    fontSize: 16,
-    color: '#888',
-  },
   paymentMethodText: {
-    fontSize: 12,
-    color: '#666',
     marginLeft: 5,
+    color: '#666',
+    fontSize: 12,
   },
-  mapButton: {
-    padding: 5,
+  emptyText: {
+    color: '#888',
+    fontSize: 16,
+    marginTop: 20,
+    textAlign: 'center',
+    fontWeight: 'bold',
   },
 });
 

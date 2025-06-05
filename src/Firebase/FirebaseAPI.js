@@ -469,52 +469,78 @@ export const resetPasswordEmail = async (email) => {
         return { success: false, error: "Lỗi khi gửi email đặt lại mật khẩu!" };
     }
 }
-export const getOverviewStats = async () => {
+export const getOverviewStats = async (month, year) => {
   try {
-    // Lấy thống kê đơn hàng
     const ordersQuery = query(collection(db, "orders"));
     const ordersSnapshot = await getDocs(ordersQuery);
-    
+
     let totalOrders = 0;
     let totalRevenue = 0;
     let pendingOrders = 0;
     let readyOrders = 0;
     let deliveringOrders = 0;
     let completedOrders = 0;
-    
-    // Khởi tạo mảng thống kê theo ngày
-    const today = new Date();
-    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const dailyStats = Array(31).fill(0); // Mảng lưu số đơn hàng mỗi ngày
-    const dailyRevenue = Array(31).fill(0); // Mảng lưu doanh thu mỗi ngày
-    
+
+    let dailyStats = [];
+    let dailyRevenue = [];
+    let monthlyStats = Array(12).fill(0);
+    let monthlyRevenue = Array(12).fill(0);
+
+    let firstDayOfMonth, lastDayOfMonth, daysInMonth;
+    if (month && year) {
+      firstDayOfMonth = new Date(year, month - 1, 1);
+      lastDayOfMonth = new Date(year, month, 0, 23, 59, 59, 999);
+      daysInMonth = lastDayOfMonth.getDate();
+      dailyStats = Array(daysInMonth).fill(0);
+      dailyRevenue = Array(daysInMonth).fill(0);
+    }
+
     ordersSnapshot.forEach((doc) => {
       const orderData = doc.data();
-      totalOrders++;
-      totalRevenue += orderData.totalAmount || 0;
-      
-      // Thống kê theo trạng thái
-      switch (orderData.status) {
-        case "Chờ xác nhận":
-          pendingOrders++;
-          break;
-        case "Chờ giao hàng":
-          readyOrders++;
-          break;
-        case "Đang giao":
-          deliveringOrders++;
-          break;
-        case "Đã đặt":
-          completedOrders++;
-          break;
+      let orderDate = null;
+      if (orderData.createdAt?.toDate) {
+        orderDate = orderData.createdAt.toDate();
+      } else if (orderData.createdAt instanceof Date) {
+        orderDate = orderData.createdAt;
+      } else if (typeof orderData.createdAt === "string" || typeof orderData.createdAt === "number") {
+        orderDate = new Date(orderData.createdAt);
       }
-      
-      // Thống kê theo ngày
-      const orderDate = orderData.createdAt?.toDate();
-      if (orderDate && orderDate >= firstDayOfMonth && orderDate <= today) {
-        const dayIndex = orderDate.getDate() - 1;
-        dailyStats[dayIndex]++;
-        dailyRevenue[dayIndex] += orderData.totalAmount || 0;
+
+      let isInRange = true;
+      if (month && year) {
+        isInRange = orderDate && orderDate >= firstDayOfMonth && orderDate <= lastDayOfMonth;
+      }
+
+      if (orderDate && isInRange) {
+        totalOrders++;
+        totalRevenue += orderData.totalAmount || 0;
+
+        switch (orderData.status) {
+          case "Chờ xác nhận":
+            pendingOrders++;
+            break;
+          case "Chờ giao hàng":
+            readyOrders++;
+            break;
+          case "Đang giao":
+            deliveringOrders++;
+            break;
+          case "Đã đặt":
+            completedOrders++;
+            break;
+        }
+
+        if (month && year) {
+          // Thống kê theo ngày
+          const dayIndex = orderDate.getDate() - 1;
+          dailyStats[dayIndex]++;
+          dailyRevenue[dayIndex] += orderData.totalAmount || 0;
+        } else {
+          // Thống kê theo tháng
+          const monthIndex = orderDate.getMonth();
+          monthlyStats[monthIndex]++;
+          monthlyRevenue[monthIndex] += orderData.totalAmount || 0;
+        }
       }
     });
 
@@ -537,8 +563,10 @@ export const getOverviewStats = async () => {
         readyOrders,
         deliveringOrders,
         completedOrders,
-        dailyStats: dailyStats.slice(0, today.getDate()), // Chỉ lấy đến ngày hiện tại
-        dailyRevenue: dailyRevenue.slice(0, today.getDate()), // Chỉ lấy đến ngày hiện tại
+        dailyStats,
+        dailyRevenue,
+        monthlyStats,
+        monthlyRevenue,
       },
     };
   } catch (error) {
